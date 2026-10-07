@@ -1,7 +1,10 @@
 __pycache__/
 *.egg-info/
 .venv/
-results/
+results/*
+!results/pilot3/
+results/pilot3/*
+!results/pilot3/runs.csv
 demo/site/
 demo/ground_truth/
 ground_truth/snapshots/
