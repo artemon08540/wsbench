@@ -1,0 +1,10 @@
+__pycache__/
+*.egg-info/
+.venv/
+results/
+demo/site/
+demo/ground_truth/
+ground_truth/snapshots/
+ground_truth/*.draft.csv
+*.log
+.DS_Store

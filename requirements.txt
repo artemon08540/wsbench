@@ -1,0 +1,13 @@
+# Точні версії фіксуються для відтворюваності (додаток до роботи).
+# Після встановлення виконайте:  pip freeze > requirements.lock.txt  і додайте цей файл у git.
+httpx==0.28.1
+beautifulsoup4==4.15.0
+lxml==6.1.3
+playwright==1.56.0
+psutil==7.2.2
+pandas==3.0.5
+pyyaml==6.0.3
+openpyxl==3.1.5
+scipy==1.18.1
+matplotlib==3.11.2
+streamlit>=1.40      # дашборд (python -m wsbench dashboard)

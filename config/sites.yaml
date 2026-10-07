@@ -1,0 +1,128 @@
+# Вибірка: перші 5 сайтів (перевірено в браузері 07.10.2026).
+# УВАГА: усі п'ять виявились SSR – товари вже є в першому HTML. Для гіпотези 1 потрібні
+# ще SPA-сторінки (див. розмову / journal.md). Тип підтвердить: python -m wsbench check-site
+
+pages:
+  - page_id: rozetka_laptops
+    site: rozetka.com.ua
+    url: https://rozetka.com.ua/ua/notebooks/c80004/
+    render_type: ssr            # 60/60 карток у сирому HTML
+    pagination: load_more       # кнопка «Показати ще» + номери сторінок
+    expected_count: 60
+    card_selector: "rz-catalog-tile"
+    name_selector: "a.tile-title"
+    price_selector: "div.price"   # актуальна ціна; закреслена – div.old-price
+    scroll: false
+    api: null
+    notes: "Angular SSR"
+
+  - page_id: comfy_laptops
+    site: comfy.ua
+    url: https://comfy.ua/notebook/
+    render_type: ssr            # 50/50 у сирому HTML
+    pagination: load_more
+    expected_count: 50
+    card_selector: "div.product-tile-catalog"
+    name_selector: "a.product-tile-title__name"
+    price_selector: ".product-tile-price__current"
+    scroll: false
+    api: null
+    notes: "Vue SSR, у HTML є window.__INITIAL_STATE__ (дані JSON-ом); захист Cloudflare – можливий 403 для М1"
+
+  - page_id: foxtrot_laptops
+    site: foxtrot.com.ua
+    url: https://www.foxtrot.com.ua/ru/shop/noutbuki.html
+    render_type: ssr            # 42/42 у сирому HTML
+    pagination: classic
+    expected_count: 42
+    card_selector: "div.product-card"
+    name_selector: ".product-card__title"
+    price_selector: ".price--current"
+    scroll: false
+    api: null
+    notes: ""
+
+  - page_id: eldorado_laptops
+    site: eldorado.ua
+    url: https://eldorado.ua/notebooks/c1039096/
+    render_type: ssr            # Next.js + styled-components, назви є в сирому HTML
+    pagination: unknown
+    expected_count: 15
+    # класи генеруються (styled-components), тому селектори – за стабільною частиною імені класу
+    card_selector: "article[class*='OfferTilestyled__StyledArticle']"
+    name_selector: "[class*='GoodsDescriptionstyled__StyledTypography']"
+    price_selector: "[class*='Pricestyled__StyledCurrentPrice']"
+    scroll: false
+    api: null
+    notes: "лише 15 карток, з них 6 «Продано» без ціни – кандидат на заміну"
+
+  - page_id: allo_laptops
+    site: allo.ua
+    url: https://allo.ua/ru/products/notebooks/
+    render_type: ssr            # 60/60 у сирому HTML
+    pagination: classic
+    expected_count: 60
+    card_selector: "div.product-card"
+    name_selector: "a.product-card__title"
+    price_selector: ".v-pb__cur .sum"
+    scroll: false
+    api: null
+    notes: ""
+
+  # ---- перевірено 07.10.2026 (вечір) ----
+  - page_id: bestbuy_laptops
+    site: bestbuy.com
+    # &intl=nosplash – пропустити сторінку вибору країни (те саме, що клік «United States»)
+    url: https://www.bestbuy.com/site/laptop-computers/all-laptops/pcmcat138500050001.c?id=pcmcat138500050001&intl=nosplash
+    render_type: spa            # у першому HTML 2 картки з 21 (~10 %) – решту малює JavaScript
+    pagination: classic
+    expected_count: null        # уточнити після повного прокручування (бачив 21)
+    card_selector: ".sku-block"
+    name_selector: "a.product-list-item-link"
+    price_selector: "[data-testid='price-block-customer-price'] span.sr-only"
+    scroll: true
+    api: null                   # дані йдуть через POST /gateway/graphql – кандидат для М2, розібрати окремо
+    notes: "SPA; товари малюються лише у видимій частині екрана (потрібне поступове прокручування); пілот 07.10: М1=2"
+
+  - page_id: xkom_laptops
+    site: x-kom.pl
+    url: https://www.x-kom.pl/g-2/c/159-laptopy-notebooki-ultrabooki.html
+    render_type: ssr            # 30/30 у сирому HTML
+    pagination: classic
+    expected_count: 30
+    # класи згенеровані (styled-components) – селектори за стабільною частиною імені
+    card_selector: "[class*='parts__ProductCardWrapper-sc-73ba5c50-1']"
+    name_selector: "[class*='parts__Title-']"
+    price_selector: "[class*='parts__ScreenReaderPrice-']"   # текст «Cena: 5 599,00 zł»
+    scroll: false
+    api: null
+    notes: "у DOM дефіси замінено на нерозривні (U+2011) – нормалізація це враховує"
+
+  - page_id: coolblue_laptops
+    site: coolblue.nl
+    url: https://www.coolblue.nl/laptops/filter
+    render_type: spa            # у сирому HTML 22 «заготовки» карток, але заповнені лише 2 (~9 %) – вміст малює JS
+    pagination: classic
+    expected_count: 22
+    card_selector: "div.product-card"
+    # УВАГА: класи хешовані (filter-xxxx) і можуть змінитися після оновлення сайту
+    name_selector: "a.filter-bfw612"
+    price_selector: "p.filter-199vasx"                       # «669,-»
+    scroll: true
+    api: null
+    notes: "нідерландська мова; хешовані класи – цікаво для гіпотези 3; пілот 07.10: М1=2, М3=22"
+
+  - page_id: verkkokauppa_laptops
+    site: verkkokauppa.com
+    url: https://www.verkkokauppa.com/en/catalog/laptops/laptops
+    render_type: spa            # у сирому HTML 48 карток-заготовок із цінами, але БЕЗ жодної назви – назви малює JS
+    pagination: load_more
+    expected_count: 48
+    card_selector: "article[data-product-id]"
+    name_selector: "a[href*='/product/'] span.sr_true"
+    price_selector: "data[data-price='current']"      # «1 399,99»
+    scroll: false
+    # robots.txt (User-agent: *) дозволяє /en/catalog/, але ЗАБОРОНЯЄ /api/ – тому М2 тут
+    # етично не застосовний, навіть якщо внутрішній API знайдеться.
+    api: null
+    notes: "Фінляндія, англомовна версія; перевірено 07.10.2026: у браузері 48/48 з назвою і ціною"

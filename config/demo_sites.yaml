@@ -1,0 +1,43 @@
+# Вибірка для локального демо-сайту (python -m wsbench demo). Формат той самий, що й для реальних сайтів.
+pages:
+  - page_id: demo_ssr
+    site: demo.local
+    url: http://127.0.0.1:8765/ssr.html
+    render_type: ssr
+    pagination: classic
+    expected_count: 24
+    card_selector: div.product-card
+    name_selector: .product-card__title
+    price_selector: .price-new
+    api: null
+
+  - page_id: demo_spa
+    site: demo.local
+    url: http://127.0.0.1:8765/spa.html
+    render_type: spa
+    pagination: infinite
+    expected_count: 36
+    card_selector: div.product-card
+    name_selector: .product-card__title
+    price_selector: .price-new
+    scroll: true
+    api:
+      url: http://127.0.0.1:8765/api/spa.json
+      items_path: data.products
+      name_field: name
+      price_field: price
+
+  - page_id: demo_hybrid
+    site: demo.local
+    url: http://127.0.0.1:8765/hybrid.html
+    render_type: hybrid
+    pagination: classic
+    expected_count: 30
+    card_selector: div.product-card
+    name_selector: .product-card__title
+    price_selector: .price-new
+    api:
+      url: http://127.0.0.1:8765/api/hybrid.json
+      items_path: items
+      name_field: name
+      price_field: price

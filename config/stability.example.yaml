@@ -1,0 +1,9 @@
+# ПРИКЛАД. Справжній файл config/stability.yaml створює команда:  python -m wsbench stability-find
+pages:
+  - page_id: foxtrot_laptops
+    snapshots: ["20241005", "20251003", "live"]   # від найстарішої до поточної
+    # Селектори, налаштовані на НАЙСТАРІШУ версію (якщо відрізняються від sites.yaml):
+    # card_selector: "div.card"
+    # name_selector: ".card__title"
+    # price_selector: ".card-price"
+    expected_counts: {"20241005": 40, "20251003": 42, "live": 42}
