@@ -99,6 +99,35 @@ def cmd_discover(args):
     print(f"\nТаблиця: {path}")
 
 
+def cmd_find_api(args):
+    from .find_api import find_api, save
+    pages = _select_pages(args.sample, args.pages)
+    print(f"Сторінок: {len(pages)}. Це займе приблизно {len(pages) * 25 // 60 + 1} хв.\n")
+    results = []
+    for i, page in enumerate(pages, 1):
+        print(f"[{i}/{len(pages)}] {page.page_id}: {page.url}", flush=True)
+        try:
+            r = find_api(page, headless=not args.headed)
+        except Exception as e:  # noqa: BLE001
+            from .find_api import ApiResult
+            r = ApiResult(page.page_id, page.url, note=f"помилка: {type(e).__name__}: {str(e)[:150]}")
+        results.append(r)
+        print(f"      -> {r.status:15} назв на сторінці {r.dom_names}, JSON-відповідей {r.json_responses}", flush=True)
+        if r.api:
+            print(f"         {r.api['method']} {r.api['url'][:150]}")
+            print(f"         список: {r.api['items_path']!r}, назва: {r.api['name_field']!r}, ціна: {r.api['price_field']!r}; "
+                  f"збіглося назв {r.matched_names}/{r.dom_names}, цін {r.matched_prices}")
+            print(f"         без браузера: HTTP {r.replay_status}, товарів {r.replay_items}; robots.txt: {r.robots}")
+        if r.note:
+            print(f"         {r.note}")
+    ym, js = save(results, Path(args.out))
+    print("\nПідсумок:")
+    for st in ("found", "replay_failed", "robots_disallow", "not_found"):
+        ids = [r.page_id for r in results if r.status == st]
+        print(f"  {st:15} {len(ids):2}  {', '.join(ids)}")
+    print(f"\nЗбережено: {ym} і {js}")
+
+
 def cmd_check(args):
     from .inspect_site import inspect_page
     pages = _select_pages(args.sample, args.pages)
@@ -386,6 +415,13 @@ def main(argv=None):
     p.add_argument("--out", default="results/checks")
     p.add_argument("--headed", action="store_true")
     p.set_defaults(func=cmd_check)
+
+    p = sub.add_parser("find-api", help="М2: знайти внутрішній JSON-API сторінок і перевірити його без браузера")
+    p.add_argument("--sample", type=Path, default=Path("config/sites_main.yaml"))
+    p.add_argument("--pages", help="лише ці page_id через кому")
+    p.add_argument("--out", default="results/find_api")
+    p.add_argument("--headed", action="store_true")
+    p.set_defaults(func=cmd_find_api)
 
     p = sub.add_parser("evaluate", help="перерахувати Recall/Precision/F1/FA із сирих результатів")
     p.add_argument("--runs", required=True)
