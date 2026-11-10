@@ -23,8 +23,23 @@ def load_runs(path: Path) -> pd.DataFrame:
     return df
 
 
+NA = "not_applicable"
+
+
+def _mask_na(df: pd.DataFrame) -> pd.DataFrame:
+    """Для незастосовних прогонів усі метрики = NaN (а не 0), щоб вони не потрапляли в медіани."""
+    d = df.copy()
+    if "error_type" in d:
+        na = d["error_type"] == NA
+        for c in KEY_COLS:
+            if c in d:
+                d.loc[na, c] = float("nan")
+    return d
+
+
 def pilot_table(df: pd.DataFrame) -> pd.DataFrame:
     """Сторінка × метод: медіани за повторами + CV часу (для обґрунтування кількості повторів)."""
+    df = _mask_na(df)
     cols = [c for c in KEY_COLS if c in df and df[c].notna().any()]
     g = df.groupby(["page_id", "render_type", "method"])
     med = g[cols].median().round(2)
@@ -34,9 +49,29 @@ def pilot_table(df: pd.DataFrame) -> pd.DataFrame:
     return med.reset_index()
 
 
-def method_table(df: pd.DataFrame) -> pd.DataFrame:
-    cols = [c for c in KEY_COLS if c in df and df[c].notna().any()]
-    return df.groupby("method")[cols].median().round(2)
+def _coverage(df: pd.DataFrame, by: list[str]) -> pd.Series:
+    """Охоплення: на скількох сторінках метод застосовний, у вигляді «k/n»."""
+    app = df[df["error_type"] != NA] if "error_type" in df else df
+    n = df.groupby(by)["page_id"].nunique()
+    k = app.groupby(by)["page_id"].nunique().reindex(n.index).fillna(0).astype(int)
+    return (k.astype(str) + "/" + n.astype(str)).rename("охоплення")
+
+
+def method_table(df: pd.DataFrame, by: tuple[str, ...] = ("method",)) -> pd.DataFrame:
+    """Медіана медіан: спочатку за повторами на сторінці, потім за сторінками.
+    Незастосовні прогони (not_applicable) виключено з усіх метрик; охоплення вказано окремо."""
+    by = list(by)
+    d = _mask_na(df)
+    cols = [c for c in KEY_COLS if c in d and d[c].notna().any()]
+    page = d.groupby(by + ["page_id"])[cols].median()
+    out = page.groupby(level=by).median().round(2)
+    out["охоплення"] = _coverage(df, by)
+    return out
+
+
+def render_table(df: pd.DataFrame) -> pd.DataFrame:
+    """Те саме з розбивкою за типом рендерингу (ssr / spa / hybrid)."""
+    return method_table(df, by=("render_type", "method"))
 
 
 def export_sample_xlsx(pages: list[PageSpec], checks: dict[str, dict], out: Path) -> None:

@@ -71,7 +71,13 @@ def _run(args, block: str) -> Path:
     print("\nМедіани за повторами (сторінка × метод):")
     print(table.to_string(index=False))
     print("\nМедіани за методами:")
-    print(report.method_table(df).to_string())
+    mt = report.method_table(df)
+    rt = report.render_table(df)
+    mt.to_csv(out / "summary_by_method.csv", encoding="utf-8-sig")
+    rt.to_csv(out / "summary_by_render.csv", encoding="utf-8-sig")
+    print(mt.to_string())
+    print("\nМедіани за типом рендерингу × методом:")
+    print(rt.to_string())
     return log
 
 
