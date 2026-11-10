@@ -36,6 +36,8 @@ class PageSpec:
     expected_count: Optional[int] = None     # очікувана кількість товарів (з еталону)
     wait_selector: Optional[str] = None      # що чекати в М3 (за замовчуванням card_selector)
     scroll: bool = False                     # чи прокручувати сторінку в М3 (lazy / infinite)
+    load_more_selector: Optional[str] = None # CSS-селектор кнопки «Показати ще» (М3 натискає її)
+    load_more_clicks: int = 0                # скільки разів натиснути кнопку (0 = не натискати)
     api: Optional[ApiSpec] = None            # налаштування М2 (None = endpoint не знайдено)
     headers: dict[str, str] = field(default_factory=dict)
     notes: str = ""

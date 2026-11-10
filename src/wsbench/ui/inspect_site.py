@@ -133,9 +133,10 @@ def inspect_page(page: PageSpec, headless: bool = True, scroll: bool | None = No
                 tab.wait_for_load_state("networkidle", timeout=5_000)
             except PwTimeout:
                 pass
-            if scroll if scroll is not None else page.scroll:
-                from ..collectors.headless import HeadlessCollector
-                HeadlessCollector._scroll(tab, page.card_selector, page.name_selector)
+            from dataclasses import replace
+
+            from ..collectors.headless import prepare_page
+            prepare_page(tab, replace(page, scroll=scroll if scroll is not None else page.scroll))
             html = tab.content()
             if debug_dir:
                 (debug_dir / "rendered.html").write_text(html, encoding="utf-8")
