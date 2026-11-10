@@ -1,0 +1,40 @@
+# Кандидати для вибірки: id і адреса сторінки каталогу. Перевірка: python -m wsbench discover
+# Друга й третя категорія для доступних магазинів частково підібрані наосліп: якщо сторінка не відкрилась
+# (404 чи інша сторінка), це видно в стовпцях final_url / title таблиці results/discover/discover.csv.
+# Магазини, що заблокували запити Python (403/429) під час першого відбору 10.11.2026, сюди не включено:
+# mediamarkt.de, conrad.de, bestbuy.ca, jbhifi.com.au, argos.co.uk, currys.co.uk, otto.de, bol.com,
+# microcenter.com, alza.cz, proshop.dk, notebooksbilliger.de, citrus.ua, euro.com.pl, mediaexpert.pl, brain.com.ua.
+
+# --- сторінки пілоту (повторна перевірка)
+foxtrot_laptops        https://www.foxtrot.com.ua/ru/shop/noutbuki.html
+eldorado_laptops       https://eldorado.ua/notebooks/c1039096/
+xkom_laptops           https://www.x-kom.pl/g-2/c/159-laptopy-notebooki-ultrabooki.html
+coolblue_laptops       https://www.coolblue.nl/laptops/filter
+verkkokauppa_laptops   https://www.verkkokauppa.com/en/catalog/laptops/laptops
+# --- ті самі магазини, інші категорії
+foxtrot_phones         https://www.foxtrot.com.ua/ru/shop/mobilnye_telefony_smartfony.html
+eldorado_tv            https://eldorado.ua/mobile-phones/c1038962/
+xkom_phones            https://www.x-kom.pl/g-4/c/1590-smartfony-i-telefony.html
+xkom_monitors          https://www.x-kom.pl/g-6/c/15-monitory.html
+coolblue_tv            https://www.coolblue.nl/televisies/filter
+coolblue_phones        https://www.coolblue.nl/mobiele-telefoons/smartphones/filter
+# --- нові магазини
+power_laptops          https://www.power.fi/c/4915/tietotekniikka/tietokoneet/kannettavat-tietokoneet/
+power_tv               https://www.power.fi/c/3391/tv-ja-audio/televisiot/
+power_phones           https://www.power.fi/c/3341/puhelimet-ja-kamerat/puhelimet/
+boulanger_laptops      https://www.boulanger.com/c/tous-les-ordinateurs-portables
+boulanger_tv           https://www.boulanger.com/c/tous-les-televiseurs
+ldlc_laptops           https://www.ldlc.com/informatique/ordinateur-portable/pc-portable/c4265/
+ldlc_phones            https://www.ldlc.com/telephonie/telephonie-portable/mobile-smartphone/c4416/
+komputronik_laptops    https://www.komputronik.pl/category/5022/laptopy.html
+komputronik_phones     https://www.komputronik.pl/category/1596/smartfony.html
+morele_laptops         https://www.morele.net/kategoria/laptopy-31/
+morele_phones          https://www.morele.net/kategoria/smartfony-280/
+hotline_laptops        https://hotline.ua/ua/computer/noutbuki-netbuki/
+hotline_phones         https://hotline.ua/ua/mobile/mobilnye-telefony-i-smartfony/
+epicentrk_laptops      https://epicentrk.ua/ua/shop/noutbuki/
+epicentrk_phones       https://epicentrk.ua/ua/shop/smartfony/
+telemart_laptops       https://telemart.ua/ua/laptops/
+telemart_monitors      https://telemart.ua/ua/monitors/
+moyo_laptops           https://www.moyo.ua/ua/comp-and-periphery/notebooks/
+moyo_phones            https://www.moyo.ua/ua/telecommunication/smart/

@@ -9,6 +9,10 @@
      частину сторінки); після досягнення низу – пауза 1 с; зупинка, коли кількість ЗАПОВНЕНИХ
      карток (з непорожньою назвою) не зросла 2 рази поспіль, але не більше 20 досягнень низу
      і не довше 30 с.
+  5) якщо задано load_more_selector і load_more_clicks > 0: кнопку «Показати ще» натискають
+     задану кількість разів; після кожного натискання чекають, доки кількість заповнених
+     карток зросте (не довше 10 с), і, якщо scroll=True, знову прокручують сторінку.
+     Якщо кнопка зникла або картки не додалися – натискання припиняються.
   Вікно браузера: 1366×900 (фіксується як умова експерименту).
 Дані вилучаються з готового DOM (page.content()) тією самою функцією, що й у М1.
 
@@ -31,7 +35,45 @@ SCROLL_STEP_FRACTION = 0.8    # крок = 80 % висоти вікна
 SCROLL_MAX = 20               # максимум досягнень низу
 SCROLL_PATIENCE = 2           # стоп, якщо заповнених карток не побільшало 2 рази поспіль
 SCROLL_BUDGET_S = 30          # загальне обмеження часу прокручування
+LOAD_MORE_WAIT_MS = 10_000    # скільки чекати нових карток після натискання «Показати ще»
+LOAD_MORE_PAUSE_MS = 500      # пауза після появи нових карток
 VIEWPORT = {"width": 1366, "height": 900}
+
+_JS_FILLED = """([card, name]) => [...document.querySelectorAll(card)].filter(c => {
+    if (!name) return true; const n = c.querySelector(name); return n && n.textContent.trim().length > 0; }).length"""
+
+
+def prepare_page(tab, page: PageSpec) -> dict:
+    """Дії на сторінці після завантаження: прокручування і натискання «Показати ще».
+    Спільна для М3 і для check-site, щоб обидва бачили сторінку однаково. Повертає лічильники."""
+    info: dict = {}
+    if page.scroll:
+        info["scrolls"] = HeadlessCollector._scroll(tab, page.card_selector, page.name_selector)
+    if page.load_more_selector and page.load_more_clicks > 0:
+        done = 0
+        for _ in range(page.load_more_clicks):
+            before = tab.evaluate(_JS_FILLED, [page.card_selector, page.name_selector])
+            # Натискання виконується в самій сторінці: так воно не залежить від банерів cookie,
+            # що перекривають кнопку. Беремо першу видиму кнопку за селектором.
+            clicked = tab.evaluate(
+                """(sel) => { const b = [...document.querySelectorAll(sel)].find(e => e.offsetParent !== null);
+                    if (!b) return false; b.scrollIntoView({block: 'center'}); b.click(); return true; }""",
+                page.load_more_selector)
+            if not clicked:
+                break
+            try:
+                tab.wait_for_function(f"(a) => ({_JS_FILLED})(a[0]) > a[1]",
+                                      arg=[[page.card_selector, page.name_selector], before],
+                                      timeout=LOAD_MORE_WAIT_MS)
+            except Exception:  # noqa: BLE001 – картки не додалися: далі не натискаємо
+                break
+            done += 1
+            tab.wait_for_timeout(LOAD_MORE_PAUSE_MS)
+            if page.scroll:
+                info["scrolls"] = info.get("scrolls", 0) + HeadlessCollector._scroll(
+                    tab, page.card_selector, page.name_selector)
+        info["load_more_clicks"] = done
+    return info
 
 
 def apply_page_headers(ctx, page: PageSpec) -> None:
@@ -114,8 +156,7 @@ class HeadlessCollector(ICollector):
                     except PwTimeout:
                         res.extra["networkidle_timeout"] = True
 
-                    if page.scroll:
-                        res.extra["scrolls"] = self._scroll(tab, page.card_selector, page.name_selector)
+                    res.extra.update(prepare_page(tab, page))
 
                     html = tab.content()
                     res.bytes_body = len(html.encode("utf-8"))
@@ -147,9 +188,7 @@ class HeadlessCollector(ICollector):
     @staticmethod
     def _scroll(tab, card_selector: str, name_selector: str | None = None) -> int:
         """Поступове прокручування. Повертає кількість кроків."""
-        js_filled = """([card, name]) => [...document.querySelectorAll(card)].filter(c => {
-            if (!name) return true; const n = c.querySelector(name); return n && n.textContent.trim().length > 0; }).length"""
-        filled = lambda: tab.evaluate(js_filled, [card_selector, name_selector])  # noqa: E731
+        filled = lambda: tab.evaluate(_JS_FILLED, [card_selector, name_selector])  # noqa: E731
         t0 = time.monotonic()
         best, stale, bottoms, steps = filled(), 0, 0, 0
         while bottoms < SCROLL_MAX and stale < SCROLL_PATIENCE and time.monotonic() - t0 < SCROLL_BUDGET_S:

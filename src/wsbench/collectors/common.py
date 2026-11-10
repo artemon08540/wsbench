@@ -40,6 +40,8 @@ def parse_price(text: Optional[str]) -> Optional[float]:
     """
     if not text:
         return None
+    # французький запис «949€95» (копійки після знака валюти) -> «949,95»
+    text = re.sub(r"(\d)\s?€\s?(\d{2})(?!\d)", r"\1,\2", text)
     m = _NUM_RE.search(text)
     if not m:
         return None

@@ -1,0 +1,254 @@
+# Основна вибірка (складено 10.11.2026 за результатами `python -m wsbench discover` і перевірки в браузері).
+# Вимоги керівника: не менше 20 сторінок, не менше 5 кожного типу рендерингу.
+#   SSR    – усі товари сторінки є в першому HTML;
+#   hybrid – перша порція товарів є в HTML, наступну сайт довантажує після кнопки «Показати ще»
+#            (М3 натискає її load_more_clicks разів; М1 бачить лише першу порцію);
+#   SPA    – у першому HTML назв товарів немає, їх малює JavaScript.
+# Тип підтверджено командою check-site 10.11.2026 (21 сторінка; verkkokauppa_phones замінено й перевірено в браузері).
+# expected_count – кількість товарів на сторінці після дій М3 (уточнюється за еталоном).
+
+pages:
+  # ------------------------------------------------------------------ SSR
+  - page_id: foxtrot_laptops
+    site: foxtrot.com.ua
+    url: https://www.foxtrot.com.ua/ru/shop/noutbuki.html
+    render_type: ssr
+    pagination: classic
+    expected_count: 42
+    card_selector: "div.product-card"
+    name_selector: ".product-card__title"
+    price_selector: ".price--current"
+
+  - page_id: foxtrot_phones
+    site: foxtrot.com.ua
+    url: https://www.foxtrot.com.ua/ru/shop/mobilnye_telefony_smartfony.html
+    render_type: ssr
+    pagination: classic
+    expected_count: 42
+    card_selector: "div.product-card"
+    name_selector: ".product-card__title"
+    price_selector: ".price--current"
+
+  - page_id: xkom_laptops
+    site: x-kom.pl
+    url: https://www.x-kom.pl/g-2/c/159-laptopy-notebooki-ultrabooki.html
+    render_type: ssr
+    pagination: classic
+    expected_count: 30
+    card_selector: "[class*='parts__ProductCardWrapper-sc-73ba5c50-1']"
+    name_selector: "[class*='parts__Title-']"
+    price_selector: "[class*='parts__ScreenReaderPrice-']"
+    notes: "класи згенеровані (styled-components); у DOM дефіси замінено на нерозривні (U+2011)"
+
+  - page_id: xkom_phones
+    site: x-kom.pl
+    url: https://www.x-kom.pl/g-4/c/1590-smartfony-i-telefony.html
+    render_type: ssr
+    pagination: classic
+    expected_count: 30
+    card_selector: "[class*='parts__ProductCardWrapper-sc-73ba5c50-1']"
+    name_selector: "[class*='parts__Title-']"
+    price_selector: "[class*='parts__ScreenReaderPrice-']"
+
+  - page_id: xkom_monitors
+    site: x-kom.pl
+    url: https://www.x-kom.pl/g-6/c/15-monitory.html
+    render_type: ssr
+    pagination: classic
+    expected_count: 30
+    card_selector: "[class*='parts__ProductCardWrapper-sc-73ba5c50-1']"
+    name_selector: "[class*='parts__Title-']"
+    price_selector: "[class*='parts__ScreenReaderPrice-']"
+
+  - page_id: ldlc_laptops
+    site: ldlc.com
+    url: https://www.ldlc.com/informatique/ordinateur-portable/pc-portable/c4265/
+    render_type: ssr
+    pagination: classic
+    expected_count: 48
+    card_selector: "li.pdt-item"
+    name_selector: "h3.title-3 a"
+    price_selector: "div.price div.price"      # «949€95»
+    notes: "Франція"
+
+  - page_id: ldlc_phones
+    site: ldlc.com
+    url: https://www.ldlc.com/telephonie/telephonie-portable/mobile-smartphone/c4416/
+    render_type: ssr
+    pagination: classic
+    expected_count: 48
+    card_selector: "li.pdt-item"
+    name_selector: "h3.title-3 a"
+    price_selector: "div.price div.price"
+
+  - page_id: hotline_laptops
+    site: hotline.ua
+    url: https://hotline.ua/ua/computer/noutbuki-netbuki/
+    render_type: ssr
+    pagination: classic
+    expected_count: 48
+    card_selector: "div.list-item"
+    name_selector: "a.item-title"
+    price_selector: ".list-item__value-price"   # діапазон «61 499 – 81 429 ₴»: береться нижня межа
+    notes: "агрегатор цін: ціна – діапазон пропозицій"
+
+  - page_id: hotline_phones
+    site: hotline.ua
+    url: https://hotline.ua/ua/mobile/mobilnye-telefony-i-smartfony/
+    render_type: ssr
+    pagination: classic
+    expected_count: 48
+    card_selector: "div.list-item"
+    name_selector: "a.item-title"
+    price_selector: ".list-item__value-price"
+
+  - page_id: boulanger_laptops
+    site: boulanger.com
+    url: https://www.boulanger.com/c/tous-les-ordinateurs-portables
+    render_type: ssr
+    pagination: classic
+    expected_count: 41
+    card_selector: "article.product-list__product"
+    name_selector: "h2.product-list__product-label"
+    price_selector: ".product-list__product-price-main .price"   # «499,99€»
+    notes: "Франція; серед карток є рекламні (sponsored) – кількість може змінюватися"
+
+  - page_id: eldorado_tv
+    site: eldorado.ua
+    # адреса містить «mobile-phones», але сайт віддає за нею категорію телевізорів (перевірено 10.11.2026)
+    url: https://eldorado.ua/mobile-phones/c1038962/
+    render_type: ssr
+    pagination: unknown
+    expected_count: 40
+    card_selector: "article[class*='OfferTilestyled__StyledArticle']"
+    name_selector: "[class*='GoodsDescriptionstyled__StyledTypography']"
+    price_selector: "[class*='Pricestyled__StyledCurrentPrice']"
+    notes: "частина товарів «Продано» без ціни; стара адреса ноутбуків (пілот) тепер веде на головну"
+
+  # ------------------------------------------------------------------ hybrid (перша порція в HTML + «Показати ще»)
+  - page_id: telemart_laptops
+    site: telemart.ua
+    url: https://telemart.ua/ua/laptops/
+    render_type: hybrid
+    pagination: load_more
+    expected_count: 96            # 48 у HTML + 48 після одного натискання
+    card_selector: ".product-item"
+    name_selector: ".product-item__title a"
+    price_selector: ".product-cost"
+    load_more_selector: ".box-load-more button"
+    load_more_clicks: 1
+
+  - page_id: telemart_monitors
+    site: telemart.ua
+    url: https://telemart.ua/ua/monitors/
+    render_type: hybrid
+    pagination: load_more
+    expected_count: 96
+    card_selector: ".product-item"
+    name_selector: ".product-item__title a"
+    price_selector: ".product-cost"
+    load_more_selector: ".box-load-more button"
+    load_more_clicks: 1
+
+  - page_id: telemart_videocards
+    site: telemart.ua
+    url: https://telemart.ua/ua/videocard/
+    render_type: hybrid
+    pagination: load_more
+    expected_count: 96
+    card_selector: ".product-item"
+    name_selector: ".product-item__title a"
+    price_selector: ".product-cost"
+    load_more_selector: ".box-load-more button"
+    load_more_clicks: 1
+
+  - page_id: moyo_laptops
+    site: moyo.ua
+    url: https://www.moyo.ua/ua/comp-and-periphery/notebooks/
+    render_type: hybrid
+    pagination: load_more
+    expected_count: 48            # 24 у HTML + 24 після одного натискання
+    card_selector: "div.product-card.goods-item"
+    name_selector: "a.product-card_title > span"
+    price_selector: ".product-card_price_current"
+    load_more_selector: "button.js-load-more-products"
+    load_more_clicks: 1
+
+  - page_id: moyo_phones
+    site: moyo.ua
+    url: https://www.moyo.ua/ua/telecommunication/smart/
+    render_type: hybrid
+    pagination: load_more
+    expected_count: 48
+    card_selector: "div.product-card.goods-item"
+    name_selector: "a.product-card_title > span"
+    price_selector: ".product-card_price_current"
+    load_more_selector: "button.js-load-more-products"
+    load_more_clicks: 1
+
+  # ------------------------------------------------------------------ SPA
+  - page_id: power_laptops
+    site: power.fi
+    url: https://www.power.fi/c/4915/tietotekniikka/tietokoneet/kannettavat-tietokoneet/
+    render_type: spa              # 0 із 36 назв у першому HTML
+    pagination: load_more
+    expected_count: 36
+    card_selector: "article.landscape-card"
+    name_selector: "a.product-title"
+    price_selector: "pwr-price"
+    wait_selector: "article.landscape-card a.product-title"
+    notes: "Фінляндія, Angular; кнопка «Näytä lisää tuotteita» не натискається – збирається перша порція"
+
+  - page_id: power_tv
+    site: power.fi
+    url: https://www.power.fi/c/3391/tv-ja-audio/televisiot/
+    render_type: spa
+    pagination: load_more
+    expected_count: 36
+    card_selector: "article.landscape-card"
+    name_selector: "a.product-title"
+    price_selector: "pwr-price"
+    wait_selector: "article.landscape-card a.product-title"
+
+  - page_id: power_phones
+    site: power.fi
+    url: https://www.power.fi/c/3341/puhelimet-ja-kamerat/puhelimet/
+    render_type: spa
+    pagination: load_more
+    expected_count: 36
+    card_selector: "article.landscape-card"
+    name_selector: "a.product-title"
+    price_selector: "pwr-price"
+    wait_selector: "article.landscape-card a.product-title"
+
+  - page_id: verkkokauppa_laptops
+    site: verkkokauppa.com
+    url: https://www.verkkokauppa.com/en/catalog/laptops/laptops
+    render_type: spa              # у HTML 48 заготовок із цінами, але без назв – назви малює JS
+    pagination: load_more
+    expected_count: 48
+    card_selector: "article[data-product-id]"
+    name_selector: "a[href*='/product/'] span.sr_true"
+    price_selector: "data[data-price='current']"
+    notes: "robots.txt забороняє /api/ – М2 тут етично не застосовний"
+
+  - page_id: verkkokauppa_phones
+    site: verkkokauppa.com
+    # /en/catalog/phones/phones – вітрина без списку товарів, тому взято підкатегорію Android-смартфонів
+    url: https://www.verkkokauppa.com/en/catalog/android-phones/android-phones
+    render_type: spa
+    pagination: load_more
+    expected_count: 48
+    card_selector: "article[data-product-id]"
+    name_selector: "a[href*='/product/'] span.sr_true"
+    price_selector: "data[data-price='current']"
+
+  - page_id: verkkokauppa_tablets
+    site: verkkokauppa.com
+    url: https://www.verkkokauppa.com/en/catalog/tablets/tablets
+    render_type: spa
+    pagination: load_more
+    expected_count: 48
+    card_selector: "article[data-product-id]"
+    name_selector: "a[href*='/product/'] span.sr_true"
+    price_selector: "data[data-price='current']"
