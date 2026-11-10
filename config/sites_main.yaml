@@ -4,7 +4,7 @@
 #   hybrid – перша порція товарів є в HTML, наступну сайт довантажує після кнопки «Показати ще»
 #            (М3 натискає її load_more_clicks разів; М1 бачить лише першу порцію);
 #   SPA    – у першому HTML назв товарів немає, їх малює JavaScript.
-# Тип тут – попередній; остаточний визначає: python -m wsbench check-site --sample config/sites_main.yaml
+# Тип підтверджено командою check-site 10.11.2026 (21 сторінка; verkkokauppa_phones замінено й перевірено в браузері).
 # expected_count – кількість товарів на сторінці після дій М3 (уточнюється за еталоном).
 
 pages:
@@ -14,7 +14,7 @@ pages:
     url: https://www.foxtrot.com.ua/ru/shop/noutbuki.html
     render_type: ssr
     pagination: classic
-    expected_count: 48
+    expected_count: 42
     card_selector: "div.product-card"
     name_selector: ".product-card__title"
     price_selector: ".price--current"
@@ -119,7 +119,7 @@ pages:
     url: https://eldorado.ua/mobile-phones/c1038962/
     render_type: ssr
     pagination: unknown
-    expected_count: null
+    expected_count: 40
     card_selector: "article[class*='OfferTilestyled__StyledArticle']"
     name_selector: "[class*='GoodsDescriptionstyled__StyledTypography']"
     price_selector: "[class*='Pricestyled__StyledCurrentPrice']"
@@ -215,7 +215,7 @@ pages:
     url: https://www.power.fi/c/3341/puhelimet-ja-kamerat/puhelimet/
     render_type: spa
     pagination: load_more
-    expected_count: 33
+    expected_count: 36
     card_selector: "article.landscape-card"
     name_selector: "a.product-title"
     price_selector: "pwr-price"
@@ -234,7 +234,8 @@ pages:
 
   - page_id: verkkokauppa_phones
     site: verkkokauppa.com
-    url: https://www.verkkokauppa.com/en/catalog/phones/phones
+    # /en/catalog/phones/phones – вітрина без списку товарів, тому взято підкатегорію Android-смартфонів
+    url: https://www.verkkokauppa.com/en/catalog/android-phones/android-phones
     render_type: spa
     pagination: load_more
     expected_count: 48
