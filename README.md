@@ -110,7 +110,8 @@ python -m wsbench find-api --sample config/sites_main.yaml
 об'єктів, назви в якому збігаються з назвами товарів на сторінці. Так визначаються адреса запиту,
 `items_path`, `name_field` і `price_field`. Потім запит повторюється без браузера й без cookie (так, як
 його виконує М2), і перевіряється `robots.txt` для адреси API. Статуси:
-`found` – endpoint придатний; `replay_failed` – працює лише в браузері; `robots_disallow` – заборонено
+`found` – endpoint придатний; `partial` – у JSON лише частина товарів (віджет, реклама);
+`replay_failed` – працює лише в браузері; `robots_disallow` – заборонено
 robots.txt; `not_found` – дані приходять у HTML, М2 не застосовний. Готові блоки `api:` –
 у `results/find_api/api_found.yaml`.
 

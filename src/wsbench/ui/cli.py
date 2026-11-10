@@ -122,7 +122,7 @@ def cmd_find_api(args):
             print(f"         {r.note}")
     ym, js = save(results, Path(args.out))
     print("\nПідсумок:")
-    for st in ("found", "replay_failed", "robots_disallow", "not_found"):
+    for st in ("found", "partial", "replay_failed", "robots_disallow", "not_found"):
         ids = [r.page_id for r in results if r.status == st]
         print(f"  {st:15} {len(ids):2}  {', '.join(ids)}")
     print(f"\nЗбережено: {ym} і {js}")

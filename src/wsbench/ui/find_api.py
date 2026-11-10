@@ -45,7 +45,7 @@ class ApiResult:
     checked_at: str = ""
     dom_names: int = 0
     json_responses: int = 0
-    status: str = "not_found"      # found | not_found | replay_failed | robots_disallow
+    status: str = "not_found"      # found | partial | not_found | replay_failed | robots_disallow
     api: dict[str, Any] | None = None
     matched_names: int = 0
     matched_prices: int = 0
@@ -261,14 +261,15 @@ def find_api(page: PageSpec, headless: bool = True, log=print) -> ApiResult:
         res.status = "replay_failed"
         res.note = f"у браузері endpoint працює, а без браузера – ні ({err or 'порожньо'}): потрібні cookie чи захист"
     else:
-        res.status = "found"
-        notes = []
         if res.replay_items < 0.8 * res.dom_names:
-            notes.append(f"API віддає лише частину товарів сторінки ({res.replay_items} з {res.dom_names}) – "
-                         "решта приходить іншим запитом або в HTML")
-        if not api.price_field:
-            notes.append("ціну в JSON не знайдено автоматично – перевірте вручну")
-        res.note = "; ".join(notes)
+            # напр. віджет відгуків чи реклами з кількома товарами – це не список каталогу
+            res.status = "partial"
+            res.note = (f"JSON містить лише частину товарів сторінки ({res.replay_items} з {res.dom_names}) – "
+                        "ймовірно віджет відгуків/реклами, а не список каталогу; М2 не застосовний")
+        else:
+            res.status = "found"
+            if not api.price_field:
+                res.note = "ціну в JSON не знайдено автоматично – перевірте вручну"
     return res
 
 
