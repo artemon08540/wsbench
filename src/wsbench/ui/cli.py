@@ -195,8 +195,11 @@ def cmd_evaluate(args):
 
 def cmd_gt_draft(args):
     pages = _select_pages(args.sample, args.pages)
+    import time
     coll = build_collectors([args.method], headless=not args.headed)[args.method]
-    for p in pages:
+    for k, p in enumerate(pages):
+        if k:
+            time.sleep(2)   # ввічливість: пауза між зверненнями (кілька сторінок одного магазину поспіль)
         res = coll.collect(p, 60)
         path = Path(args.gt) / f"{p.page_id}.draft.csv"
         write_ground_truth_template(path, res.records)
@@ -429,7 +432,7 @@ def main(argv=None):
     p.set_defaults(func=cmd_evaluate)
 
     p = sub.add_parser("gt-draft", help="чернетка еталону для ручної перевірки")
-    p.add_argument("--sample", type=Path, default=Path("config/sites.yaml"))
+    p.add_argument("--sample", type=Path, default=Path("config/sites_main.yaml"))
     p.add_argument("--pages")
     p.add_argument("--method", default="M3")
     p.add_argument("--gt", default="ground_truth")
