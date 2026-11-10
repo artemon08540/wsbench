@@ -1,0 +1,44 @@
+# Кандидати для вибірки: id і адреса сторінки каталогу. Перевірка: python -m wsbench discover
+# Адреси категорій частково підібрано наосліп – якщо сторінка не відкрилась (404, інша сторінка),
+# це видно в стовпцях final_url / title таблиці results/discover/discover.csv.
+
+# --- уже у вибірці (SPA), друга й третя категорія
+coolblue_tv            https://www.coolblue.nl/televisies/filter
+coolblue_phones        https://www.coolblue.nl/mobiele-telefoons/smartphones/filter
+verkkokauppa_tv        https://www.verkkokauppa.com/en/catalog/1093b/TVs
+verkkokauppa_phones    https://www.verkkokauppa.com/en/catalog/1307b/Smartphones
+# --- нові, ймовірно SPA / гібрид
+power_laptops          https://www.power.fi/c/4915/tietotekniikka/tietokoneet/kannettavat-tietokoneet/
+power_tv               https://www.power.fi/c/3391/tv-ja-audio/televisiot/
+power_phones           https://www.power.fi/c/3341/puhelimet-ja-kamerat/puhelimet/
+mediamarkt_laptops     https://www.mediamarkt.de/de/category/notebooks-475.html
+boulanger_laptops      https://www.boulanger.com/c/tous-les-ordinateurs-portables
+conrad_laptops         https://www.conrad.de/de/o/notebooks-0222010.html
+bestbuyca_laptops      https://www.bestbuy.ca/en-ca/category/laptops-macbooks/20352
+jbhifi_laptops         https://www.jbhifi.com.au/collections/computers-tablets/laptops
+argos_laptops          https://www.argos.co.uk/browse/technology/laptops-and-pcs/laptops/c:30049/
+currys_laptops         https://www.currys.co.uk/computing/laptops/laptops
+otto_laptops           https://www.otto.de/technik/laptop/
+bol_laptops            https://www.bol.com/nl/nl/l/laptops/4770/
+ldlc_laptops           https://www.ldlc.com/informatique/ordinateur-portable/pc-portable/c4265/
+microcenter_laptops    https://www.microcenter.com/category/4294967288/laptops-notebooks
+alza_laptops           https://www.alza.cz/notebooky/18842920.htm
+proshop_laptops        https://www.proshop.dk/Baerbar
+notebooksbilliger_laptops https://www.notebooksbilliger.de/notebooks
+hotline_laptops        https://hotline.ua/ua/computer/noutbuki-netbuki/
+epicentrk_laptops      https://epicentrk.ua/ua/shop/noutbuki/
+citrus_laptops         https://www.ctrs.com.ua/noutbuki-i-ultrabuki/
+# --- ймовірно SSR (друга категорія для наявних сайтів і нові)
+euro_laptops           https://www.euro.com.pl/laptopy-i-netbooki.bhtml
+euro_tv                https://www.euro.com.pl/telewizory-led-lcd-plazmowe.bhtml
+mediaexpert_laptops    https://www.mediaexpert.pl/komputery-i-tablety/laptopy-i-ultrabooki/laptopy
+mediaexpert_tv         https://www.mediaexpert.pl/telewizory-i-rtv/telewizory
+xkom_phones            https://www.x-kom.pl/g-4/c/1590-smartfony-i-telefony.html
+foxtrot_phones         https://www.foxtrot.com.ua/ru/shop/mobilnye_telefony_smartfon.html
+eldorado_phones        https://eldorado.ua/mobile-phones/c1038962/
+morele_laptops         https://www.morele.net/kategoria/laptopy-31/
+komputronik_laptops    https://www.komputronik.pl/category/5022/laptopy.html
+brain_laptops          https://brain.com.ua/category/Noutbuky-c1191/
+telemart_laptops       https://telemart.ua/ua/laptops/
+moyo_laptops           https://www.moyo.ua/ua/comp-and-periphery/notebooks/
+ktc_laptops            https://ktc.ua/noutbuki/

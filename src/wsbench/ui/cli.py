@@ -2,6 +2,7 @@
 
 Приклади:
   python -m wsbench demo
+  python -m wsbench discover --list config/candidates.txt
   python -m wsbench check-site --sample config/sites.yaml
   python -m wsbench pilot --sample config/sites.yaml --methods M1,M3 --repeats 3
   python -m wsbench run-experiment --sample config/sites.yaml --repeats 5 --seed 42 --gt ground_truth
@@ -80,6 +81,22 @@ def cmd_pilot(args):
 
 def cmd_run(args):
     _run(args, block="main")
+
+
+def cmd_discover(args):
+    from .discover import discover, load_candidates, save
+    cands = load_candidates(args.list)
+    if args.only:
+        keep = set(args.only.split(","))
+        cands = [c for c in cands if c[0] in keep]
+    print(f"Кандидатів: {len(cands)}. Це займе приблизно {len(cands) * 20 // 60 + 1} хв.\n")
+    res = discover(cands, headless=not args.headed)
+    path = save(res, Path(args.out))
+    print("\nПідсумок:")
+    for t in ("ssr", "hybrid", "spa", "blocked", "unknown"):
+        ids = [c.cand_id for c in res if c.render_type_auto == t]
+        print(f"  {t:8} {len(ids):2}  {', '.join(ids)}")
+    print(f"\nТаблиця: {path}")
 
 
 def cmd_check(args):
@@ -355,6 +372,13 @@ def main(argv=None):
     p = sub.add_parser("run-experiment", help="основний експеримент")
     common(p)
     p.set_defaults(func=cmd_run)
+
+    p = sub.add_parser("discover", help="швидкий відбір кандидатів у вибірку: тип рендерингу без налаштування селекторів")
+    p.add_argument("--list", type=Path, default=Path("config/candidates.txt"))
+    p.add_argument("--only", help="лише ці id через кому")
+    p.add_argument("--out", default="results/discover")
+    p.add_argument("--headed", action="store_true")
+    p.set_defaults(func=cmd_discover)
 
     p = sub.add_parser("check-site", help="robots.txt, тип рендерингу, пошук endpoint для М2")
     p.add_argument("--sample", type=Path, default=Path("config/sites.yaml"))
