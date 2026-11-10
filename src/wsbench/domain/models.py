@@ -20,6 +20,7 @@ class ApiSpec:
     items_path: str = ""          # шлях до списку товарів у JSON, напр. "data.products"
     name_field: str = "name"      # шлях до назви всередині елемента
     price_field: str = "price"    # шлях до ціни всередині елемента
+    warmup: bool = False          # спершу GET самої сторінки (cookie відвідувача), потім запит до API
 
 
 @dataclass
