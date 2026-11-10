@@ -139,7 +139,7 @@ pages:
     expected_count: 96            # 48 у HTML + 48 після одного натискання
     card_selector: ".product-item"
     name_selector: ".product-item__title a"
-    price_selector: ".product-cost"
+    price_selector: ".product-item-cost-column > .product-cost"   # актуальна ціна; стара (product-cost_old) лежить глибше, у product-cost__top-row
     load_more_selector: ".box-load-more button"
     load_more_clicks: 1
 
@@ -151,7 +151,7 @@ pages:
     expected_count: 96
     card_selector: ".product-item"
     name_selector: ".product-item__title a"
-    price_selector: ".product-cost"
+    price_selector: ".product-item-cost-column > .product-cost"   # актуальна ціна; стара (product-cost_old) лежить глибше, у product-cost__top-row
     load_more_selector: ".box-load-more button"
     load_more_clicks: 1
 
@@ -163,7 +163,7 @@ pages:
     expected_count: 96
     card_selector: ".product-item"
     name_selector: ".product-item__title a"
-    price_selector: ".product-cost"
+    price_selector: ".product-item-cost-column > .product-cost"   # актуальна ціна; стара (product-cost_old) лежить глибше, у product-cost__top-row
     load_more_selector: ".box-load-more button"
     load_more_clicks: 1
 
