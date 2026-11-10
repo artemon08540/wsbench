@@ -45,16 +45,23 @@ PROBE_JS = r"""
   const best = Object.entries(groups).sort((a, b) => b[1].length - a[1].length)[0];
   if (!best) return {cards: 0, selector: '', names: [], name_selector: '', price_selector: ''};
   const cards = best[1];
-  const bad = /opini|ocen|review|arvostel|dostaw|delivery|koszyk|cart|відгук|отзыв|доставка|кошик/i;
+  const bad = /opini|ocen|review|arvostel|dostaw|delivery|koszyk|cart|відгук|отзыв|доставка|кошик|wysyłamy|varastossa|livraison|levering|bezorg|pojutrze|jutro/i;
+  // Характеристики («Процесор: …; RAM: …») – не назва: у них кілька двокрапок.
+  const isSpec = t => (t.match(/:\s?/g) || []).length >= 2 || /\n/.test(t);
+  const okText = t => t.length >= 12 && t.length < 220 && !priceRe.test(t) && !bad.test(t) && !isSpec(t);
+  const leaf = x => { const t = (x.innerText || '').trim(); return [...x.children].every(ch => (ch.innerText || '').trim() !== t); };
+  // Назва – це передусім заголовок або елемент із «title/name» у класі, потім посилання на товар,
+  // і лише в крайньому разі – alt зображення.
   const nameEl = c => {
-    const els = [...c.querySelectorAll('*')].filter(x => {
-      const t = (x.innerText || '').trim();
-      return t.length >= 12 && t.length < 220 && !priceRe.test(t) && !bad.test(t)
-        && [...x.children].every(ch => (ch.innerText || '').trim() !== t);
-    });
-    els.sort((a, b) => b.innerText.length - a.innerText.length);
-    return els[0] || null;
+    const tiers = ['h2,h3,h4,[class*=title i],[class*=name i],[itemprop=name]', 'a[href]'];
+    for (const sel of tiers) {
+      const els = [...c.querySelectorAll(sel)].filter(x => okText((x.innerText || '').trim()) && leaf(x));
+      if (els.length) { els.sort((a, b) => b.innerText.length - a.innerText.length); return els[0]; }
+    }
+    const img = c.querySelector('img[alt]');
+    return img && img.alt.trim().length >= 12 ? img : null;
   };
+  const textOf = e => ((e.tagName === 'IMG' ? e.alt : e.innerText) || '').trim().replace(/\s+/g, ' ');
   const priceEl = c => {
     const els = [...c.querySelectorAll('*')].filter(x => priceRe.test((x.innerText || '').trim())
       && (x.innerText || '').trim().length < 40);
@@ -65,7 +72,7 @@ PROBE_JS = r"""
     return (Object.entries(m).sort((a, b) => b[1] - a[1])[0] || [''])[0]; };
   const names = [], nsel = [], psel = [];
   cards.forEach(c => {
-    const n = nameEl(c); if (n) { names.push(n.innerText.trim().replace(/\s+/g, ' ')); nsel.push(sig(n)); }
+    const n = nameEl(c); if (n) { names.push(textOf(n)); nsel.push(sig(n)); }
     const p = priceEl(c); if (p) psel.push(sig(p));
   });
   return {cards: cards.length, selector: best[0], names, name_selector: most(nsel), price_selector: most(psel)};
