@@ -253,8 +253,9 @@ pages:
     notes: "Фінляндія; robots.txt основного сайту забороняє /api/, але М2 звертається до іншого хоста (search.service)"
     api:
       # окремий хост search.service.verkkokauppa.com; robots.txt на ньому немає (404) – обмежень немає.
-      # sessionId – випадковий ідентифікатор, який генерує сама сторінка; без нього API не повертає товарів (перевірено find-api)
-      url: "https://search.service.verkkokauppa.com/en/api/v1/product-search?filter%5Bbase%2Bcategory%5D%5B%5D=laptops&page%5Bnumber%5D=1&page%5Bsize%5D=48&sort=-score&sessionId=88899d15-4d88-413c-90bd-8aec23a70db8&private=true&include=campaigns%2Ccategory%2CsalesCategories.parent%2Cbrand%2Cfacets"
+      # sessionId – випадковий ідентифікатор сесії, який генерує сама сторінка; без нього API не повертає товарів.
+      # {uuid} – щоразу новий: із фіксованим sessionId API віддавало інший набір товарів, ніж бачить новий відвідувач
+      url: "https://search.service.verkkokauppa.com/en/api/v1/product-search?filter%5Bbase%2Bcategory%5D%5B%5D=laptops&page%5Bnumber%5D=1&page%5Bsize%5D=48&sort=-score&sessionId={uuid}&private=true&include=campaigns%2Ccategory%2CsalesCategories.parent%2Cbrand%2Cfacets"
       headers:
         x-request-origin-path: "/en/catalog/laptops/laptops"
       items_path: data
@@ -273,8 +274,9 @@ pages:
     price_selector: "data[data-price='current']"
     api:
       # окремий хост search.service.verkkokauppa.com; robots.txt на ньому немає (404) – обмежень немає.
-      # sessionId – випадковий ідентифікатор, який генерує сама сторінка; без нього API не повертає товарів (перевірено find-api)
-      url: "https://search.service.verkkokauppa.com/en/api/v1/product-search?filter%5Bbase%2Bcategory%5D%5B%5D=android_phones&page%5Bnumber%5D=1&page%5Bsize%5D=48&sort=-score&sessionId=71326e7e-ba5f-4ab3-8738-cb7c7520f6bc&private=true&include=campaigns%2Ccategory%2CsalesCategories.parent%2Cbrand%2Cfacets"
+      # sessionId – випадковий ідентифікатор сесії, який генерує сама сторінка; без нього API не повертає товарів.
+      # {uuid} – щоразу новий: із фіксованим sessionId API віддавало інший набір товарів, ніж бачить новий відвідувач
+      url: "https://search.service.verkkokauppa.com/en/api/v1/product-search?filter%5Bbase%2Bcategory%5D%5B%5D=android_phones&page%5Bnumber%5D=1&page%5Bsize%5D=48&sort=-score&sessionId={uuid}&private=true&include=campaigns%2Ccategory%2CsalesCategories.parent%2Cbrand%2Cfacets"
       headers:
         x-request-origin-path: "/en/catalog/android-phones/android-phones"
       items_path: data
@@ -292,8 +294,9 @@ pages:
     price_selector: "data[data-price='current']"
     api:
       # окремий хост search.service.verkkokauppa.com; robots.txt на ньому немає (404) – обмежень немає.
-      # sessionId – випадковий ідентифікатор, який генерує сама сторінка; без нього API не повертає товарів (перевірено find-api)
-      url: "https://search.service.verkkokauppa.com/en/api/v1/product-search?filter%5Bbase%2Bcategory%5D%5B%5D=tablets&page%5Bnumber%5D=1&page%5Bsize%5D=48&sort=-score&sessionId=716bb48e-c7d6-4ae6-8c61-22c900541c33&private=true&include=campaigns%2Ccategory%2CsalesCategories.parent%2Cbrand%2Cfacets"
+      # sessionId – випадковий ідентифікатор сесії, який генерує сама сторінка; без нього API не повертає товарів.
+      # {uuid} – щоразу новий: із фіксованим sessionId API віддавало інший набір товарів, ніж бачить новий відвідувач
+      url: "https://search.service.verkkokauppa.com/en/api/v1/product-search?filter%5Bbase%2Bcategory%5D%5B%5D=tablets&page%5Bnumber%5D=1&page%5Bsize%5D=48&sort=-score&sessionId={uuid}&private=true&include=campaigns%2Ccategory%2CsalesCategories.parent%2Cbrand%2Cfacets"
       headers:
         x-request-origin-path: "/en/catalog/tablets/tablets"
       items_path: data

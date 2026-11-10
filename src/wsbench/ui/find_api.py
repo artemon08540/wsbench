@@ -155,7 +155,8 @@ def replay(page: PageSpec, api: ApiSpec, timeout_s: int = 30) -> tuple[int | Non
     headers = {**DEFAULT_HEADERS, "Accept": "application/json", "Referer": page.url, **page.headers, **api.headers}
     try:
         with httpx.Client(headers=headers, follow_redirects=True, timeout=timeout_s) as client:
-            r = client.request(api.method, api.url, params=api.params or None, json=api.json_body)
+            r = client.request(api.method, api.url.replace("{uuid}", "00000000-0000-4000-8000-000000000000"),
+                               params=api.params or None, json=api.json_body)
     except httpx.HTTPError as e:
         return None, None, f"{type(e).__name__}"
     if r.status_code >= 400:
