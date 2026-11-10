@@ -6,6 +6,11 @@
 #   SPA    – у першому HTML назв товарів немає, їх малює JavaScript.
 # Тип підтверджено командою check-site 10.11.2026 (21 сторінка; verkkokauppa_phones замінено й перевірено в браузері).
 # expected_count – кількість товарів на сторінці після дій М3 (уточнюється за еталоном).
+# М2 (блок api:) налаштовано командою `python -m wsbench find-api` 10.11.2026: придатний endpoint
+# (повний список товарів сторінки, працює без браузера й cookie) знайдено лише на 6 SPA-сторінках.
+# На SSR і гібридних сторінках список товарів приходить у HTML, тому М2 для них не застосовний (n/a).
+# Знайдені для hotline_phones, boulanger_laptops, eldorado_tv JSON-запити – це віджети відгуків
+# і реклами (6–28 товарів із 40–48), а не список каталогу, тому їх не використано.
 
 pages:
   # ------------------------------------------------------------------ SSR
@@ -198,6 +203,11 @@ pages:
     price_selector: "pwr-price"
     wait_selector: "article.landscape-card a.product-title"
     notes: "Фінляндія, Angular; кнопка «Näytä lisää tuotteita» не натискається – збирається перша порція"
+    api:
+      url: "https://www.power.fi/api/v2/productlists?cat=4915&size=36&s=5&from=0&o=false&cd=false"
+      items_path: products
+      name_field: title
+      price_field: price
 
   - page_id: power_tv
     site: power.fi
@@ -209,6 +219,11 @@ pages:
     name_selector: "a.product-title"
     price_selector: "pwr-price"
     wait_selector: "article.landscape-card a.product-title"
+    api:
+      url: "https://www.power.fi/api/v2/productlists?cat=3391&size=36&s=5&from=0&o=false&cd=false"
+      items_path: products
+      name_field: title
+      price_field: price
 
   - page_id: power_phones
     site: power.fi
@@ -220,6 +235,11 @@ pages:
     name_selector: "a.product-title"
     price_selector: "pwr-price"
     wait_selector: "article.landscape-card a.product-title"
+    api:
+      url: "https://www.power.fi/api/v2/productlists?cat=3341&size=36&s=5&from=0&o=false&cd=false"
+      items_path: products
+      name_field: title
+      price_field: price
 
   - page_id: verkkokauppa_laptops
     site: verkkokauppa.com
@@ -230,7 +250,16 @@ pages:
     card_selector: "article[data-product-id]"
     name_selector: "a[href*='/product/'] span.sr_true"
     price_selector: "data[data-price='current']"
-    notes: "robots.txt забороняє /api/ – М2 тут етично не застосовний"
+    notes: "Фінляндія; robots.txt основного сайту забороняє /api/, але М2 звертається до іншого хоста (search.service)"
+    api:
+      # окремий хост search.service.verkkokauppa.com; robots.txt на ньому немає (404) – обмежень немає.
+      # sessionId – випадковий ідентифікатор, який генерує сама сторінка; без нього API не повертає товарів (перевірено find-api)
+      url: "https://search.service.verkkokauppa.com/en/api/v1/product-search?filter%5Bbase%2Bcategory%5D%5B%5D=laptops&page%5Bnumber%5D=1&page%5Bsize%5D=48&sort=-score&sessionId=88899d15-4d88-413c-90bd-8aec23a70db8&private=true&include=campaigns%2Ccategory%2CsalesCategories.parent%2Cbrand%2Cfacets"
+      headers:
+        x-request-origin-path: "/en/catalog/laptops/laptops"
+      items_path: data
+      name_field: attributes.name
+      price_field: attributes.price.currentFormatted
 
   - page_id: verkkokauppa_phones
     site: verkkokauppa.com
@@ -242,6 +271,15 @@ pages:
     card_selector: "article[data-product-id]"
     name_selector: "a[href*='/product/'] span.sr_true"
     price_selector: "data[data-price='current']"
+    api:
+      # окремий хост search.service.verkkokauppa.com; robots.txt на ньому немає (404) – обмежень немає.
+      # sessionId – випадковий ідентифікатор, який генерує сама сторінка; без нього API не повертає товарів (перевірено find-api)
+      url: "https://search.service.verkkokauppa.com/en/api/v1/product-search?filter%5Bbase%2Bcategory%5D%5B%5D=android_phones&page%5Bnumber%5D=1&page%5Bsize%5D=48&sort=-score&sessionId=71326e7e-ba5f-4ab3-8738-cb7c7520f6bc&private=true&include=campaigns%2Ccategory%2CsalesCategories.parent%2Cbrand%2Cfacets"
+      headers:
+        x-request-origin-path: "/en/catalog/android-phones/android-phones"
+      items_path: data
+      name_field: attributes.name
+      price_field: attributes.price.currentFormatted
 
   - page_id: verkkokauppa_tablets
     site: verkkokauppa.com
@@ -252,3 +290,12 @@ pages:
     card_selector: "article[data-product-id]"
     name_selector: "a[href*='/product/'] span.sr_true"
     price_selector: "data[data-price='current']"
+    api:
+      # окремий хост search.service.verkkokauppa.com; robots.txt на ньому немає (404) – обмежень немає.
+      # sessionId – випадковий ідентифікатор, який генерує сама сторінка; без нього API не повертає товарів (перевірено find-api)
+      url: "https://search.service.verkkokauppa.com/en/api/v1/product-search?filter%5Bbase%2Bcategory%5D%5B%5D=tablets&page%5Bnumber%5D=1&page%5Bsize%5D=48&sort=-score&sessionId=716bb48e-c7d6-4ae6-8c61-22c900541c33&private=true&include=campaigns%2Ccategory%2CsalesCategories.parent%2Cbrand%2Cfacets"
+      headers:
+        x-request-origin-path: "/en/catalog/tablets/tablets"
+      items_path: data
+      name_field: attributes.name
+      price_field: attributes.price.currentFormatted

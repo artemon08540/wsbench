@@ -100,6 +100,21 @@ python -m wsbench check-site --sample config/sites.yaml
 Результат зберігається в `results/checks/checks.json` і **`results/checks/sample.xlsx`** (таблиця вибірки з п. 7.1).
 Якщо `card_selector` написано неправильно, обидва лічильники будуть 0. Тоді виправте селектор.
 
+### Налаштування М2: `find-api`
+
+```powershell
+python -m wsbench find-api --sample config/sites_main.yaml
+```
+
+Команда відкриває сторінку в браузері, записує всі JSON-відповіді на фонові запити й шукає в них список
+об'єктів, назви в якому збігаються з назвами товарів на сторінці. Так визначаються адреса запиту,
+`items_path`, `name_field` і `price_field`. Потім запит повторюється без браузера й без cookie (так, як
+його виконує М2), і перевіряється `robots.txt` для адреси API. Статуси:
+`found` – endpoint придатний; `partial` – у JSON лише частина товарів (віджет, реклама);
+`replay_failed` – працює лише в браузері; `robots_disallow` – заборонено
+robots.txt; `not_found` – дані приходять у HTML, М2 не застосовний. Готові блоки `api:` –
+у `results/find_api/api_found.yaml`.
+
 ## Крок 3. Пілот: М1 vs М3, 3 повтори
 
 ```powershell
@@ -121,6 +136,7 @@ python -m wsbench pilot --sample config/sites.yaml --methods M1,M3 --repeats 3
 |---|---|---|
 | Відбір кандидатів | `python -m wsbench discover` | тип рендерингу й селектори без налаштування → `results/discover/discover.csv` |
 | Перевірка сайтів | `python -m wsbench check-site` | robots.txt, тип рендерингу, блокування, кандидати М2 → `results/checks/sample.xlsx` |
+| Налаштування М2 | `python -m wsbench find-api` | endpoint, поля JSON, перевірка без браузера → `results/find_api/api_found.yaml` |
 | Пілот | `python -m wsbench pilot --out results/pilot` | М1 vs М3, 3 повтори |
 | Умови проведення | `python -m wsbench env-info` | `results/environment.json` |
 | Чернетка еталону | `python -m wsbench gt-draft --pages <id>` | `ground_truth/<id>.draft.csv` (для ручної перевірки) |
