@@ -18,6 +18,7 @@ from __future__ import annotations
 import json
 import re
 import time
+import uuid
 from dataclasses import asdict, dataclass, field, replace
 from datetime import datetime
 from pathlib import Path
@@ -45,13 +46,14 @@ class ApiResult:
     checked_at: str = ""
     dom_names: int = 0
     json_responses: int = 0
-    status: str = "not_found"      # found | partial | not_found | replay_failed | robots_disallow
+    status: str = "not_found"      # found | partial | replay_mismatch | not_found | replay_failed | robots_disallow
     api: dict[str, Any] | None = None
     matched_names: int = 0
     matched_prices: int = 0
     items_in_list: int = 0
     replay_status: int | None = None
     replay_items: int | None = None
+    replay_match: int = 0
     robots: str = ""
     note: str = ""
     others: list[str] = field(default_factory=list)
@@ -120,7 +122,8 @@ def best_mapping(data: Any, dom_names: list[str], dom_prices: list[float]) -> di
             hits = 0
             for f in flat:
                 v = f.get(k)
-                if not isinstance(v, str) or len(v) < 6:
+                # назва – текст із пробілами; посилання й «slug» (samsung-tv-55) пропускаємо
+                if not isinstance(v, str) or len(v) < 6 or " " not in v.strip() or v.startswith(("http", "/")):
                     continue
                 nv = _norm(v)
                 if _key(v) in dom_keys or any(nv and (nv in d or d in nv) for d in dom_norm):
@@ -150,22 +153,33 @@ def _strip_session(url: str) -> str:
     return urlunparse(p._replace(query=urlencode(q)))
 
 
-def replay(page: PageSpec, api: ApiSpec, timeout_s: int = 30) -> tuple[int | None, int | None, str]:
-    """Повторює запит так само, як це зробить М2: без браузера і без cookie."""
+def _count_matches(names: list[str], dom_names: list[str]) -> int:
+    dom_keys = {_key(n) for n in dom_names}
+    dom_norm = [_norm(n) for n in dom_names]
+    return sum(1 for n in names if _key(n) in dom_keys or any(_norm(n) in d or d in _norm(n) for d in dom_norm))
+
+
+def replay(page: PageSpec, api: ApiSpec, dom_names: list[str], timeout_s: int = 30) -> tuple[int | None, int | None, int, str]:
+    """Повторює запит так само, як це зробить М2: без браузера. Повертає
+    (HTTP-код, товарів у відповіді, скільки з них є на сторінці, помилка)."""
     headers = {**DEFAULT_HEADERS, "Accept": "application/json", "Referer": page.url, **page.headers, **api.headers}
     try:
         with httpx.Client(headers=headers, follow_redirects=True, timeout=timeout_s) as client:
-            r = client.request(api.method, api.url, params=api.params or None, json=api.json_body)
+            if api.warmup:   # спершу сама сторінка – отримати cookie, які сайт дає кожному відвідувачу
+                client.get(page.url, headers={"Accept": DEFAULT_HEADERS["Accept"]})
+                time.sleep(1)
+            r = client.request(api.method, api.url.replace("{uuid}", str(uuid.uuid4())),
+                               params=api.params or None, json=api.json_body)
     except httpx.HTTPError as e:
-        return None, None, f"{type(e).__name__}"
+        return None, None, 0, f"{type(e).__name__}"
     if r.status_code >= 400:
-        return r.status_code, None, f"HTTP {r.status_code}"
+        return r.status_code, None, 0, f"HTTP {r.status_code}"
     try:
         items = dig(r.json(), api.items_path) or []
     except ValueError:
-        return r.status_code, None, "відповідь не JSON"
-    n = sum(1 for it in items if dig(it, api.name_field))
-    return r.status_code, n, ""
+        return r.status_code, None, 0, "відповідь не JSON"
+    names = [str(dig(it, api.name_field)) for it in items if dig(it, api.name_field)]
+    return r.status_code, len(names), _count_matches(names, dom_names), ""
 
 
 def find_api(page: PageSpec, headless: bool = True, log=print) -> ApiResult:
@@ -245,14 +259,22 @@ def find_api(page: PageSpec, headless: bool = True, log=print) -> ApiResult:
     api = ApiSpec(url=_strip_session(c["url"]), method=c["method"], json_body=body, headers=hdrs,
                   items_path=m["items_path"], name_field=m["name_field"], price_field=m["price_field"])
 
+    dom = [r.name for r in recs]
     time.sleep(2)
-    res.replay_status, res.replay_items, err = replay(page, api)
+    res.replay_status, res.replay_items, res.replay_match, err = replay(page, api, dom)
     if res.replay_items is None and api.url != c["url"]:      # без «сесійних» параметрів не працює
         api = replace(api, url=c["url"])
         time.sleep(2)
-        res.replay_status, res.replay_items, err = replay(page, api)
+        res.replay_status, res.replay_items, res.replay_match, err = replay(page, api, dom)
+    if res.replay_items and res.replay_match < 0.8 * res.dom_names:
+        # без браузера API віддає інші товари: пробуємо, як справжній клієнт, спершу відкрити сторінку (cookie)
+        time.sleep(2)
+        w = replay(page, replace(api, warmup=True), dom)
+        if w[1] and w[2] > res.replay_match:
+            api = replace(api, warmup=True)
+            res.replay_status, res.replay_items, res.replay_match, err = w
     res.robots = check_robots(api.url)
-    res.api = {k: v for k, v in asdict(api).items() if v not in (None, {}, "") or k == "price_field"}
+    res.api = {k: v for k, v in asdict(api).items() if v not in (None, {}, "", False) or k == "price_field"}
 
     if res.robots == "no":
         res.status = "robots_disallow"
@@ -260,16 +282,21 @@ def find_api(page: PageSpec, headless: bool = True, log=print) -> ApiResult:
     elif not res.replay_items:
         res.status = "replay_failed"
         res.note = f"у браузері endpoint працює, а без браузера – ні ({err or 'порожньо'}): потрібні cookie чи захист"
+    elif res.replay_items < 0.8 * res.dom_names:
+        # напр. віджет відгуків чи реклами з кількома товарами – це не список каталогу
+        res.status = "partial"
+        res.note = (f"JSON містить лише частину товарів сторінки ({res.replay_items} з {res.dom_names}) – "
+                    "ймовірно віджет відгуків/реклами, а не список каталогу; М2 не застосовний")
+    elif res.replay_match < 0.8 * res.dom_names:
+        res.status = "replay_mismatch"
+        res.note = (f"без браузера API віддає інший набір товарів: зі сторінкою збігається {res.replay_match} з "
+                    f"{res.dom_names} (залежить від стану сесії в браузері)")
     else:
-        if res.replay_items < 0.8 * res.dom_names:
-            # напр. віджет відгуків чи реклами з кількома товарами – це не список каталогу
-            res.status = "partial"
-            res.note = (f"JSON містить лише частину товарів сторінки ({res.replay_items} з {res.dom_names}) – "
-                        "ймовірно віджет відгуків/реклами, а не список каталогу; М2 не застосовний")
-        else:
-            res.status = "found"
-            if not api.price_field:
-                res.note = "ціну в JSON не знайдено автоматично – перевірте вручну"
+        res.status = "found"
+        if api.warmup:
+            res.note = "потрібен попередній запит сторінки (cookie відвідувача) – warmup: true"
+        if not api.price_field:
+            res.note = (res.note + "; " if res.note else "") + "ціну в JSON не знайдено автоматично – перевірте вручну"
     return res
 
 

@@ -1,6 +1,8 @@
 """М2 – звернення до внутрішнього JSON-API сторінки, минаючи HTML."""
 from __future__ import annotations
 
+import uuid
+
 import httpx
 
 from ..domain import CollectResult, ICollector, PageSpec, ProductRecord
@@ -23,11 +25,20 @@ class InternalApiCollector(ICollector):
                    **page.headers, **api.headers}
         try:
             with httpx.Client(headers=headers, follow_redirects=True, timeout=timeout_s) as client:
-                r = client.request(api.method, api.url, params=api.params or None, json=api.json_body)
+                warm = None
+                if api.warmup:
+                    # Як справжній клієнт сайту: спершу сторінка (сайт ставить cookie відвідувача),
+                    # потім API в тій самій сесії. Трафік і запит сторінки входять у вимірювання М2.
+                    warm = client.get(page.url, headers={"Accept": DEFAULT_HEADERS["Accept"]})
+                # {uuid} в адресі – новий випадковий ідентифікатор сесії на кожен прогін:
+                # М2, як і М3, щоразу приходить на сайт «новим відвідувачем».
+                url = api.url.replace("{uuid}", str(uuid.uuid4()))
+                r = client.request(api.method, url, params=api.params or None, json=api.json_body)
             res.status_code = r.status_code
-            res.bytes_wire = r.num_bytes_downloaded
-            res.bytes_body = len(r.content)
-            res.n_requests = res.n_xhr = 1 + len(r.history)
+            res.bytes_wire = r.num_bytes_downloaded + (warm.num_bytes_downloaded if warm is not None else 0)
+            res.bytes_body = len(r.content) + (len(warm.content) if warm is not None else 0)
+            res.n_xhr = 1 + len(r.history)
+            res.n_requests = res.n_xhr + (1 + len(warm.history) if warm is not None else 0)
             res.antibot_hits, err = detect_antibot(r.status_code, r.text)
             if err:
                 res.error_type = err

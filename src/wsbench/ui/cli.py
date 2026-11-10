@@ -117,12 +117,13 @@ def cmd_find_api(args):
             print(f"         {r.api['method']} {r.api['url'][:150]}")
             print(f"         список: {r.api['items_path']!r}, назва: {r.api['name_field']!r}, ціна: {r.api['price_field']!r}; "
                   f"збіглося назв {r.matched_names}/{r.dom_names}, цін {r.matched_prices}")
-            print(f"         без браузера: HTTP {r.replay_status}, товарів {r.replay_items}; robots.txt: {r.robots}")
+            print(f"         без браузера: HTTP {r.replay_status}, товарів {r.replay_items}, з них є на сторінці {r.replay_match}"
+                  f"{' (з warmup)' if r.api.get('warmup') else ''}; robots.txt: {r.robots}")
         if r.note:
             print(f"         {r.note}")
     ym, js = save(results, Path(args.out))
     print("\nПідсумок:")
-    for st in ("found", "partial", "replay_failed", "robots_disallow", "not_found"):
+    for st in ("found", "partial", "replay_mismatch", "replay_failed", "robots_disallow", "not_found"):
         ids = [r.page_id for r in results if r.status == st]
         print(f"  {st:15} {len(ids):2}  {', '.join(ids)}")
     print(f"\nЗбережено: {ym} і {js}")
