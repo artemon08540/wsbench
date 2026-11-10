@@ -122,7 +122,8 @@ def best_mapping(data: Any, dom_names: list[str], dom_prices: list[float]) -> di
             hits = 0
             for f in flat:
                 v = f.get(k)
-                if not isinstance(v, str) or len(v) < 6:
+                # назва – текст із пробілами; посилання й «slug» (samsung-tv-55) пропускаємо
+                if not isinstance(v, str) or len(v) < 6 or " " not in v.strip() or v.startswith(("http", "/")):
                     continue
                 nv = _norm(v)
                 if _key(v) in dom_keys or any(nv and (nv in d or d in nv) for d in dom_norm):
