@@ -180,9 +180,10 @@ python -m wsbench pilot --sample config/sites.yaml --methods M1,M3 --repeats 3
 ```powershell
 # 1) основний прогін (М1–М4, 5 повторів, seed 42)
 python -m wsbench run-experiment --sample config/sites_main.yaml --repeats 5 --seed 42 --out results/main
-# 2) перезапуск М4 з критерієм за відповіддю М1 і заміна його прогонів у журналі
-python -m wsbench run-experiment --sample config/sites_main.yaml --methods M4 --repeats 5 --seed 42 --out results/main_m4
-python -m wsbench replace-method --base results/main/runs.csv --new results/main_m4/runs.csv --method M4 --out results/main_v2/runs.csv
+# 2) М4 з критерієм за відповіддю М1: рішення – функція відповіді М1 (config/m4_signals.yaml, виміряно командою probe),
+#    а обидва кроки (М1 і М3) виміряно в тих самих повторах, тому прогони М4 відтворюються з журналу
+#    (повний перезапуск 16.11 неможливий: еталон застарів, Telemart відповідає 403 – results/recheck_2026-11-16)
+python -m wsbench m4-reconstruct --runs results/main/runs.csv --out results/main_v2/runs.csv
 # 3) таблиці розділу 3 (М2 застосовний лише на 3 сторінках Power, тому основне порівняння – М1, М3, М4 на 22 сторінках)
 python -m wsbench analyze --runs results/main_v2/runs.csv --sample config/sites_main.yaml --methods M1,M3,M4 --out results/main_v2/report
 # 4) М2 окремо на сторінках, де він застосовний
@@ -209,8 +210,10 @@ python -m wsbench analyze --runs results/main_v2/runs.csv --sample config/sites_
   запускається, якщо М1 знайшов < 5 записів, або частка карток із заповненими назвою і ціною < θ (θ = 0,8),
   або у вихідному HTML є кнопка «Показати ще». Чутливість до θ = 0,6/0,7/0,8/0,9 рахує `analyze` за журналом
   (поля `m1_fill`, `m1_load_more`, `switch_reason`). Стара версія критерію – `--m4-rule oracle` (лише для відтворення).
-- **User-Agent** – прапорець `--ua`: `browser` – заголовок звичайного Chrome, `honest` – дослідницький
-  інструмент (`wsbench/… (academic research; +посилання)`), М3 – з власним UA headless-браузера без підміни.
+- **User-Agent** – прапорець `--ua`: `honest` (за замовчуванням) – дослідницький інструмент
+  (`wsbench/… (academic research; +посилання)`), М3 – з власним UA headless-браузера без підміни; `browser` – заголовок
+  звичайного Chrome. Основний експеримент 10.11.2026 виконано з `browser`; контрольна перевірка 16.11.2026
+  (`probe`, results/probe_2026-11-16) показала однаковий доступ до всіх 22 сторінок за обох режимів.
 - **Вибір методу**: FR не входить до згортки (FR = 100 − SR дублює П5); LOC і П12 наводяться в таблицях,
   але не входять до згортки (див. розділ 3.8 записки); `analyze` також рахує результат при вилученні
   кожного показника по одному.

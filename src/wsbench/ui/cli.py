@@ -56,7 +56,7 @@ def _select_pages(sample: Path, page_ids: str | None):
 
 def _run(args, block: str) -> Path:
     from ..collectors.common import set_ua_mode
-    ua = getattr(args, "ua", "browser")
+    ua = getattr(args, "ua", "honest")
     m4_rule = getattr(args, "m4_rule", "fields")
     set_ua_mode(ua)
     pages = _select_pages(args.sample, args.pages)
@@ -205,7 +205,7 @@ def cmd_probe(args):
     from ..collectors.common import extract_from_html, set_ua_mode
     from ..collectors.http_html import fetch_html
     from ..collectors.hybrid import HybridCollector, m1_signals
-    ua = getattr(args, "ua", "browser")
+    ua = getattr(args, "ua", "honest")
     m4_rule = getattr(args, "m4_rule", "fields")
     set_ua_mode(ua)
     pages = _select_pages(args.sample, args.pages)
@@ -497,8 +497,9 @@ def main(argv=None):
                        help="поріг М4: мін. частка карток із заповненими назвою і ціною у відповіді М1")
         p.add_argument("--m4-rule", choices=["fields", "oracle"], default="fields",
                        help="критерій М4: fields – за відповіддю М1 (основний); oracle – стара версія за expected_count")
-        p.add_argument("--ua", choices=["browser", "honest"], default="browser",
-                       help="User-Agent: browser – як у звичайного Chrome; honest – дослідницький інструмент, без маскування")
+        p.add_argument("--ua", choices=["browser", "honest"], default="honest",
+                       help="User-Agent: honest (за замовч.) – дослідницький інструмент, без маскування; browser – як у "
+                            "звичайного Chrome (так виконано основний експеримент 10.11.2026)")
         p.add_argument("--gt", type=Path, default=Path("ground_truth"), help="тека з еталоном")
         p.add_argument("--out", default=out)
         p.add_argument("--min-delay", type=float, default=2.0, help="мін. пауза між зверненнями до домену, с")
