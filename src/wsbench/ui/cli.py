@@ -314,32 +314,50 @@ def cmd_env(args):
 
 
 def cmd_overhead(args):
-    """НФВ-6: накладні витрати монітора. N прогонів М1 з монітором і без, порівняння медіан."""
+    """НФВ-6: накладні витрати монітора. Два режими:
+    online  – N прогонів М1 з монітором і без на живій сторінці (з мережевим шумом);
+    offline – сторінку завантажено один раз, далі N разів вилучення з того самого HTML з монітором і без:
+              мережа виключена, тому різниця – лише вплив самого вимірювання."""
+    import random
     import statistics
     import time
+    from scipy.stats import mannwhitneyu
+    from ..collectors.common import extract_from_html
+    from ..collectors.http_html import fetch_html
     from ..harness import ResourceMonitor
     page = _select_pages(args.sample, args.pages)[0]
     coll = build_collectors(["M1"])["M1"]
+    html = ""
+    if args.mode == "offline":
+        _, html = fetch_html(page, 60)
+        if not html:
+            sys.exit("Не вдалося завантажити сторінку для offline-режиму")
     times = {True: [], False: []}
     order = [True, False] * args.n
-    import random
     random.Random(args.seed).shuffle(order)
     for flag in order:
         mon = ResourceMonitor(enabled=flag)
         mon.start()
         t0 = time.perf_counter()
-        coll.collect(page, 60)
+        if args.mode == "offline":
+            extract_from_html(html, page)
+        else:
+            coll.collect(page, 60)
         times[flag].append((time.perf_counter() - t0) * 1000)
         mon.stop()
-        time.sleep(args.min_delay)
+        if args.mode == "online":
+            time.sleep(args.min_delay)
     on, off = statistics.median(times[True]), statistics.median(times[False])
-    print(f"медіана з монітором: {on:.2f} мс; без: {off:.2f} мс; різниця: {(on - off) / off * 100:+.2f} %  (n={args.n} кожен)")
+    p = float(mannwhitneyu(times[True], times[False]).pvalue)
+    print(f"[{args.mode}] медіана з монітором: {on:.2f} мс; без: {off:.2f} мс; різниця: {(on - off) / off * 100:+.2f} %; "
+          f"Манн–Вітні p = {p:.3f}  (n={args.n} кожен)")
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
-    report.save_json({"page_id": page.page_id, "n": args.n, "seed": args.seed, "median_on_ms": on, "median_off_ms": off,
-                      "overhead_%": (on - off) / off * 100, "times_on_ms": times[True], "times_off_ms": times[False]},
-                     out / f"overhead_{page.page_id}.json")
-    print(f"Збережено: {out / f'overhead_{page.page_id}.json'}")
+    path = out / f"overhead_{args.mode}_{page.page_id}.json"
+    report.save_json({"mode": args.mode, "page_id": page.page_id, "n": args.n, "seed": args.seed, "median_on_ms": on,
+                      "median_off_ms": off, "overhead_%": (on - off) / off * 100, "mann_whitney_p": p,
+                      "times_on_ms": times[True], "times_off_ms": times[False]}, path)
+    print(f"Збережено: {path}")
 
 
 class _QuietHandler(SimpleHTTPRequestHandler):
@@ -573,6 +591,8 @@ def main(argv=None):
     p = sub.add_parser("overhead-test", help="накладні витрати монітора (НФВ-6)")
     p.add_argument("--sample", type=Path, default=Path("config/sites_main.yaml"))
     p.add_argument("--out", default="results/overhead")
+    p.add_argument("--mode", choices=["offline", "online"], default="offline",
+                   help="offline – без мережі (чистий вплив монітора); online – повні прогони М1 на живій сторінці")
     p.add_argument("--pages")
     p.add_argument("--n", type=int, default=20)
     p.add_argument("--seed", type=int, default=42)
