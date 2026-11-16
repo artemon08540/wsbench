@@ -59,10 +59,22 @@ def main():
     if df.empty:
         st.warning(f"У {runs_csv} немає прогонів для блоку «{block}». Оберіть «усі» в лівій панелі.")
         st.stop()
+    # Методи для порівняння. За замовчуванням – застосовні щонайменше на половині сторінок (так побудовано розділ 3:
+    # М2 застосовний лише на 3 сторінках і в повних блоках залишив би N = 3).
+    appl = df.groupby("method").apply(lambda g: (g["error_type"] != "not_applicable").mean(), include_groups=False)
+    all_m = sorted(df["method"].unique())
+    default_m = [m for m in all_m if appl.get(m, 1) >= 0.5] or all_m
+    chosen = st.sidebar.multiselect("Методи", all_m, default=default_m,
+                                    help="М2 застосовний лише на частині сторінок; його можна додати для описового порівняння")
+    if chosen:
+        df = df[df["method"].isin(chosen)]
     metrics = [m for m in KEY if m in df and df[m].notna().any()]
     st.title("Порівняння методів збору даних")
     st.caption(f"{runs_csv} · {len(df)} прогонів · {df['page_id'].nunique()} сторінок · методи: "
                f"{', '.join(sorted(df['method'].unique()))}")
+    if len(chosen) < len(all_m):
+        st.caption(f"Не показано: {', '.join(m for m in all_m if m not in chosen)} (застосовний на "
+                   f"{', '.join(f'{100 * appl[m]:.0f} %' for m in all_m if m not in chosen)} сторінок) – можна додати в лівій панелі.")
 
     t1, t2, t3, t4, t5, t6 = st.tabs(["Огляд", "Показники", "Значущість", "Гіпотези", "Вибір методу", "Сирі дані"])
 
@@ -94,7 +106,7 @@ def main():
         st.caption("Суттєво = p (Холм) < 0,05 і |δ| ≥ 0,33 і перевищено поріг практичної значущості.")
 
     with t4:
-        st.subheader("Гіпотеза 1 – повнота за типом рендерингу")
+        st.subheader("Гіпотеза 1 – повнота за типом сторінки (hybrid = сторінки з довантаженням)")
         if "recall" in metrics:
             st.dataframe(pd.DataFrame([S.gap_by_group(df, g1="spa", g2="ssr"), S.gap_by_group(df, g1="hybrid", g2="ssr")]),
                          use_container_width=True)
@@ -138,6 +150,8 @@ def main():
         norm = mcda.normalize(crit)
         e = mcda.weighted_sum(norm, mcda.metric_weights_from_groups(list(norm.columns), gw)).sort_values(ascending=False)
         st.bar_chart(e)
+        st.caption("До згортки не входять FR (= 100 − SR), П12 і LOC (див. розділ 3.8). Якщо в групі не лишилося "
+                   "показників, її вага перерозподіляється між іншими групами.")
         st.write(f"**Найкращий за цих ваг:** {e.index[0]} (E = {e.iloc[0]:.3f}) · **Множина Парето:** {', '.join(front)}")
         sens = mcda.sensitivity(norm, gw)
         st.dataframe(sens, use_container_width=True)
