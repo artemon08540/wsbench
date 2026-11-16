@@ -12,6 +12,7 @@ results/pilot3/*
 !results/environment.json
 !results/main/environment.json
 !results/overhead/
+!results/gt_second_pass/
 demo/site/
 demo/ground_truth/
 ground_truth/snapshots/
