@@ -25,7 +25,7 @@ from __future__ import annotations
 import time
 
 from ..domain import CollectResult, ICollector, PageSpec
-from .common import DEFAULT_HEADERS, detect_antibot, extract_from_html
+from .common import browser_user_agent, detect_antibot, extract_from_html
 
 SELECTOR_TIMEOUT_MS = 15_000
 NETWORKIDLE_TIMEOUT_MS = 5_000
@@ -116,7 +116,7 @@ class HeadlessCollector(ICollector):
                 browser = pw.chromium.launch(headless=self.headless)
                 res.extra["browser_launch_ms"] = round((time.perf_counter() - t0) * 1000, 2)
                 try:
-                    ctx = browser.new_context(user_agent=DEFAULT_HEADERS["User-Agent"], locale="uk-UA",
+                    ctx = browser.new_context(user_agent=browser_user_agent(), locale="uk-UA",
                                               viewport=VIEWPORT)
                     apply_page_headers(ctx, page)
                     ctx.set_default_timeout(timeout_s * 1000)

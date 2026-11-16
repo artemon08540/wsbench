@@ -81,7 +81,7 @@ def bootstrap_median_ci(x: Iterable[float], n: int = BOOTSTRAP_N, level: float =
 
 def _data_for(df: pd.DataFrame, metric: str) -> pd.DataFrame:
     """Для ресурсних показників виключаємо мережеві збої/тайм-аути; для якісних – беремо все застосоване."""
-    resource = metric in ("t_ms", "throughput", "traffic_mb", "ram_peak_mb", "cpu_s")
+    resource = metric in ("t_ms", "throughput", "traffic_mb", "ram_delta_mb", "cpu_s")
     d = df[usable_for_resources(df)] if resource else df[df["error_type"] != "not_applicable"]
     return d[d[metric].notna()] if metric in d else d.iloc[0:0]
 
@@ -279,7 +279,7 @@ def correlations(df: pd.DataFrame, pairs=None) -> pd.DataFrame:
     """Спірмен між характеристиками сторінки і показниками методів (на рівні сторінок)."""
     pairs = pairs or DEFAULT_CORRELATIONS
     pl = page_level(df[usable_for_resources(df)], ["n_found", "html_size", "n_xhr", "n_requests", "t_ms",
-                                                    "recall", "traffic_mb", "ram_peak_mb"])
+                                                    "recall", "traffic_mb", "ram_delta_mb"])
     rows = []
     for feat, feat_m, metric, metric_m, label in pairs:
         if feat not in pl or metric not in pl:
@@ -337,3 +337,74 @@ def survival_tests(surv: pd.DataFrame, focus: str = "M2") -> pd.DataFrame:
         chi2, p, dof, _ = stats.chi2_contingency(table)
         res.attrs["chi2"] = {"χ²": round(float(chi2), 3), "df": int(dof), "p": float(p)}
     return res
+
+
+# ---------------------------------------------------------------- рівень магазинів
+def site_level(df: pd.DataFrame, metrics=("recall", "field_accuracy", "t_ms", "traffic_mb", "ram_delta_mb", "cpu_s")) -> pd.DataFrame:
+    """Магазин × метод: медіана з медіан сторінок магазину. Сторінки одного магазину мають спільну
+    верстку й селектори, тому незалежною одиницею є магазин (10 спостережень замість 22)."""
+    metrics = [m for m in metrics if m in df and df[m].notna().any()]
+    pl = page_level(df[usable_for_resources(df) | df["error_type"].isin(["empty"])], metrics)
+    meta = pl.groupby("site").agg(сторінок=("page_id", "nunique"),
+                                  тип=("render_type", lambda s: "/".join(sorted(set(s)))))
+    t = pl.groupby(["site", "method"])[metrics].median().unstack("method")
+    t.columns = [f"{BY_COL[m].code} {m} · {meth}" for m, meth in t.columns]
+    return meta.join(t)
+
+
+def site_level_tests(df: pd.DataFrame, metric: str = "recall", pairs=(("M1", "M3"), ("M1", "M4"), ("M3", "M4"))) -> pd.DataFrame:
+    """Вілкоксон + Холм на рівні магазинів (N = кількість магазинів, де застосовні обидва методи)."""
+    pl = page_level(df, [metric])
+    w = pl.groupby(["site", "method"])[metric].median().unstack("method")
+    rows = []
+    for a, b in pairs:
+        if a not in w or b not in w:
+            continue
+        d = w[[a, b]].dropna()
+        x, y = d[a].to_numpy(float), d[b].to_numpy(float)
+        if len(d) < 2 or np.allclose(x, y):
+            p = 1.0
+        else:
+            try:
+                p = float(stats.wilcoxon(x, y, zero_method="zsplit").pvalue)
+            except ValueError:
+                p = 1.0
+        rows.append({"Показник": metric, "Пара": f"{a} vs {b}", "N магазинів": len(d), "Медіана A": np.median(x),
+                     "Медіана B": np.median(y), "p": p, "δ": cliffs_delta(x, y)})
+    t = pd.DataFrame(rows)
+    if len(t):
+        t["p (Холм)"] = holm(t["p"].tolist())
+        t["Ефект"] = t["δ"].map(delta_label)
+    return t
+
+
+# ---------------------------------------------------------------- чутливість М4 до порогу
+def m4_threshold_sensitivity(df: pd.DataFrame, thresholds=(0.6, 0.7, 0.8, 0.9), min_records: int = 5) -> pd.DataFrame:
+    """Рішення М4 – детермінована функція відповіді М1 (n_M1, m1_fill, m1_load_more), тому результат при
+    іншому порозі відтворюється з журналу: якщо при порозі θ рішення збігається з фактичним – береться
+    фактичний прогін М4; якщо ні – прогін М1 (браузер не запускався б) або М3 (запускався б) того ж повтору."""
+    m4 = df[df["method"] == "M4"].copy()
+    if "m1_fill" not in m4 or m4["m1_fill"].isna().all():
+        return pd.DataFrame()
+    m4["m1_fill"] = pd.to_numeric(m4["m1_fill"], errors="coerce").fillna(0)
+    m4["m1_found"] = pd.to_numeric(m4["m1_found"], errors="coerce").fillna(0)
+    lm = m4["m1_load_more"].astype(str).str.lower().eq("true")
+    actual = m4["fallback"].astype(str).str.lower().eq("true")
+    blocked = m4.get("switch_reason", pd.Series("", index=m4.index)).astype(str).eq("blocked")
+    key = ["page_id", "rep"]
+    alt = {m: df[df["method"] == m].set_index(key) for m in ("M1", "M3")}
+    rows = []
+    for th in thresholds:
+        sw = ~blocked & ((m4["m1_found"] < min_records) | (m4["m1_fill"] < th) | lm)
+        rec, t, n_sw = [], [], int(sw.sum())
+        for i, r in m4.iterrows():
+            if sw[i] == actual[i]:
+                src = r
+            else:
+                k = (r["page_id"], r["rep"])
+                src = alt["M3" if sw[i] else "M1"].loc[k] if k in alt["M3" if sw[i] else "M1"].index else r
+            rec.append(src["recall"]), t.append(src["t_ms"])
+        rows.append({"Поріг θ": th, "Перемикань на браузер": n_sw, "Частка, %": 100 * n_sw / len(m4),
+                     "Повнота (медіана), %": float(np.nanmedian(rec)), "Повнота (середнє), %": float(np.nanmean(rec)),
+                     "Час (медіана), мс": float(np.nanmedian(t)), "Відрізняється від фактичного": int((sw != actual).sum())})
+    return pd.DataFrame(rows)

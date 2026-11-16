@@ -28,7 +28,7 @@ METRICS: list[MetricDef] = [
     MetricDef("M6", "t_ms", "Час виконання", "мс", False, "K2", "run"),
     MetricDef("M7", "throughput", "Пропускна здатність", "зап./с", True, "K2", "run"),
     MetricDef("M8", "traffic_mb", "Мережевий трафік", "МБ", False, "K2", "run"),
-    MetricDef("M9", "ram_peak_mb", "Пікова пам'ять", "МБ", False, "K2", "run"),
+    MetricDef("M9", "ram_delta_mb", "Приріст пам'яті над базою", "МБ", False, "K2", "run"),
     MetricDef("M10", "cpu_s", "Процесорний час", "с", False, "K2", "run"),
     MetricDef("M11", "fr", "Частота відмов (FR)", "%", False, "K3", "method"),
     MetricDef("M12", "antibot_hits", "Спрацювання анти-бот-захисту", "к-сть/прогін", False, "K3", "run"),
@@ -44,13 +44,13 @@ RUN_METRICS = [m for m in METRICS if m.level == "run"]
 #   ("ratio", x) – відношення більшої медіани до меншої >= x
 PRACTICAL_THRESHOLDS: dict[str, tuple[str, float]] = {
     "recall": ("abs", 5.0), "precision": ("abs", 5.0), "f1": ("abs", 5.0), "field_accuracy": ("abs", 5.0),
-    "t_ms": ("ratio", 1.5), "traffic_mb": ("ratio", 1.5), "ram_peak_mb": ("abs", 100.0),
+    "t_ms": ("ratio", 1.5), "traffic_mb": ("ratio", 1.5), "ram_delta_mb": ("abs", 100.0),
     "cpu_s": ("ratio", 1.5), "throughput": ("ratio", 1.5),
     "sr": ("abs", 5.0), "fr": ("abs", 5.0), "ssr": ("abs", 5.0),
 }
 
 NUMERIC_COLS = ["n_found", "tp", "fp", "fn", "recall", "precision", "f1", "field_accuracy", "t_ms", "throughput",
-                "traffic_mb", "body_mb", "ram_peak_mb", "ram_baseline_mb", "cpu_s", "antibot_hits", "n_requests",
+                "traffic_mb", "body_mb", "ram_peak_mb", "ram_baseline_mb", "ram_delta_mb", "cpu_s", "antibot_hits", "n_requests",
                 "n_xhr", "html_size", "status_code", "rep", "browser_launch_ms"]
 
 
@@ -63,6 +63,10 @@ def load_runs(path, block: Optional[str] = None) -> pd.DataFrame:
     df.loc[df["error_type"] == "nan", "error_type"] = ""
     if "success" in df:
         df["success"] = df["success"].map(lambda v: str(v).strip().lower() == "true" if str(v).strip() not in ("", "nan") else np.nan)
+    # M9: приріст пам'яті над базою (пік мінус пам'ять процесу до прогону) – так у показник
+    # не потрапляє сам інтерпретатор Python і інструмент вимірювання (~160 МБ).
+    if "ram_peak_mb" in df and "ram_baseline_mb" in df:
+        df["ram_delta_mb"] = (df["ram_peak_mb"] - df["ram_baseline_mb"]).clip(lower=0)
     if block and "block" in df:
         df = df[df["block"] == block]
     return df
@@ -97,7 +101,7 @@ def method_level(df: pd.DataFrame, extra: Optional[dict[str, dict[str, float]]] 
       'exclude' – такі сторінки ігноруються (показує якість методу лише там, де він працює).
     Ресурсні показники (час, пам'ять, трафік, CPU) завжди рахуються лише там, де метод виконувався."""
     quality = ["recall", "precision", "f1", "field_accuracy", "throughput"]
-    resource = ["t_ms", "traffic_mb", "ram_peak_mb", "cpu_s"]
+    resource = ["t_ms", "traffic_mb", "ram_delta_mb", "cpu_s"]
     usable = df[usable_for_resources(df)]
     res = pd.DataFrame(index=sorted(df["method"].unique()))
     for col in resource:

@@ -18,7 +18,7 @@ from wsbench.analytics.metrics import BY_COL, failure_breakdown, load_runs, meth
 from wsbench.decision import mcda
 from wsbench.visualization import charts
 
-KEY = ["recall", "precision", "f1", "field_accuracy", "t_ms", "throughput", "traffic_mb", "ram_peak_mb", "cpu_s"]
+KEY = ["recall", "precision", "f1", "field_accuracy", "t_ms", "throughput", "traffic_mb", "ram_delta_mb", "cpu_s"]
 
 
 def _args():
@@ -108,7 +108,7 @@ def main():
             st.info("Потрібен еталон: python -m wsbench evaluate --runs ...")
         st.subheader("Гіпотеза 2 – у скільки разів М3 «дорожчий» за М1")
         rows = []
-        for mm in ["t_ms", "traffic_mb", "ram_peak_mb", "cpu_s"]:
+        for mm in ["t_ms", "traffic_mb", "ram_delta_mb", "cpu_s"]:
             if mm in metrics:
                 t = S.significance_table(df, mm, methods=["M1", "M3"], na_policy=na_tests)
                 if len(t):

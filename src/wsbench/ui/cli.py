@@ -55,13 +55,15 @@ def _select_pages(sample: Path, page_ids: str | None):
 
 
 def _run(args, block: str) -> Path:
+    from ..collectors.common import set_ua_mode
+    set_ua_mode(args.ua)
     pages = _select_pages(args.sample, args.pages)
     methods = args.methods.split(",")
     tasks = plan_runs(pages, methods, args.repeats, args.seed)
-    collectors = build_collectors(methods, hybrid_threshold=args.threshold, headless=not args.headed)
+    collectors = build_collectors(methods, hybrid_threshold=args.threshold, headless=not args.headed, m4_rule=args.m4_rule)
     out = Path(args.out)
     print(f"План: {len(pages)} сторінок × {len(methods)} методів × {args.repeats} повторів = {len(tasks)} прогонів; "
-          f"зерно={args.seed}; журнал: {out / 'runs.csv'}")
+          f"зерно={args.seed}; UA={args.ua}; критерій М4={args.m4_rule} (поріг {args.threshold}); журнал: {out / 'runs.csv'}")
     ex = RunExecutor(collectors, out, block=block, gt_dir=args.gt, min_delay_s=args.min_delay,
                      timeout_s=args.timeout, on_row=_print_row)
     log = ex.run(tasks)
@@ -194,6 +196,37 @@ def cmd_evaluate(args):
     print(f"\nЗбережено: {out}")
 
 
+def cmd_probe(args):
+    """Швидка перевірка перед перезапуском: один прохід М1 (і за бажанням М3) по всіх сторінках.
+    Показує код відповіді, ознаки блокування, кількість товарів і рішення нового критерію М4."""
+    import time
+    from ..collectors.common import extract_from_html, set_ua_mode
+    from ..collectors.http_html import fetch_html
+    from ..collectors.hybrid import HybridCollector, m1_signals
+    set_ua_mode(args.ua)
+    pages = _select_pages(args.sample, args.pages)
+    h = HybridCollector(threshold=args.threshold, headless=not args.headed)
+    m3 = build_collectors(["M3"], headless=not args.headed)["M3"] if args.with_m3 else None
+    print(f"UA={args.ua}; поріг М4={args.threshold}; сторінок: {len(pages)}\n")
+    print(f"{'page_id':<26}{'HTTP':>5}{'блок':>7}{'М1 знайдено':>13}{'fill':>7}{'кнопка':>8}  {'рішення М4':<14}"
+          + ("  М3: HTTP / блок / знайдено" if m3 else ""))
+    for k, p in enumerate(pages):
+        if k:
+            time.sleep(args.min_delay)
+        res, html = fetch_html(p, args.timeout)
+        recs = extract_from_html(html, p) if html and res.error_type is None else []
+        sig = m1_signals(html, p, recs) if res.error_type is None else {"fill": 0.0, "load_more": False}
+        blocked = res.error_type in ("http_403", "http_429", "captcha")
+        dec = "blocked" if blocked else (h.switch_reason(len(recs), sig, p) or "лише М1")
+        line = (f"{p.page_id:<26}{res.status_code or '-':>5}{(res.error_type or 'ні') if blocked else 'ні':>7}"
+                f"{len(recs):>13}{sig['fill']:>7.2f}{'так' if sig['load_more'] else 'ні':>8}  {dec:<14}")
+        if m3:
+            time.sleep(args.min_delay)
+            r3 = m3.collect(p, args.timeout)
+            line += f"  {r3.status_code or '-'} / {r3.error_type if r3.antibot_hits else 'ні'} / {len(r3.records)}"
+        print(line, flush=True)
+
+
 def cmd_gt_draft(args):
     pages = _select_pages(args.sample, args.pages)
     import time
@@ -208,6 +241,22 @@ def cmd_gt_draft(args):
     print("\nУВАГА: це лише чернетка. Відкрийте її в Excel, звірте КОЖЕН рядок зі сторінкою в браузері (п. 7.2 ТЗ),\n"
           "допишіть пропущені товари, видаліть зайві, виправте ціни. Збережіть як «CSV (роздільник – крапка з комою)»\n"
           "і перейменуйте файл на <page_id>.csv (без .draft).")
+
+
+def cmd_gt_blank(args):
+    """Порожні шаблони для НЕЗАЛЕЖНОЇ повторної розмітки (без чернетки збирача): ground_truth/second_pass/<id>.csv."""
+    from ..groundtruth.evaluate import write_ground_truth_template
+    pages = _select_pages(args.sample, args.pages)
+    for p in pages:
+        path = Path(args.gt) / "second_pass" / f"{p.page_id}.csv"
+        if path.exists() and not args.force:
+            print(f"{path} вже існує – пропускаю (--force, щоб перезаписати)")
+            continue
+        write_ground_truth_template(path, [])
+        print(f"{p.page_id}: {p.url}\n   -> {path}")
+    print("\nВідкрийте адресу у звичайному браузері, виконайте ті самі дії, що й відвідувач (прокрутіть донизу, один раз\n"
+          "натисніть «Показати ще», якщо вона є), і вручну перенесіть у файл КОЖЕН товар: позиція, назва, ціна.\n"
+          "Чернетку збирача і перший еталон під час розмітки НЕ відкривайте. Потім: python -m wsbench gt-agreement")
 
 
 def cmd_gt_agreement(args):
@@ -241,9 +290,17 @@ def cmd_gt_agreement(args):
 
 
 def cmd_env(args):
+    import subprocess
     info = report.environment_info()
-    report.save_json(info, Path(args.out) / "environment.json")
+    out = Path(args.out)
+    report.save_json(info, out / "environment.json")
     print(json.dumps(info, ensure_ascii=False, indent=2))
+    try:   # точні версії бібліотек – для відтворюваності (додаток до роботи)
+        frz = subprocess.run([sys.executable, "-m", "pip", "freeze"], capture_output=True, text=True, timeout=120).stdout
+        (out / "requirements.lock.txt").write_text(frz, encoding="utf-8")
+        print(f"\nЗбережено: {out / 'environment.json'}, {out / 'requirements.lock.txt'}")
+    except Exception as e:  # noqa: BLE001
+        print(f"pip freeze не вдалося: {e}")
 
 
 def cmd_overhead(args):
@@ -267,6 +324,12 @@ def cmd_overhead(args):
         time.sleep(args.min_delay)
     on, off = statistics.median(times[True]), statistics.median(times[False])
     print(f"медіана з монітором: {on:.2f} мс; без: {off:.2f} мс; різниця: {(on - off) / off * 100:+.2f} %  (n={args.n} кожен)")
+    out = Path(args.out)
+    out.mkdir(parents=True, exist_ok=True)
+    report.save_json({"page_id": page.page_id, "n": args.n, "seed": args.seed, "median_on_ms": on, "median_off_ms": off,
+                      "overhead_%": (on - off) / off * 100, "times_on_ms": times[True], "times_off_ms": times[False]},
+                     out / f"overhead_{page.page_id}.json")
+    print(f"Збережено: {out / f'overhead_{page.page_id}.json'}")
 
 
 class _QuietHandler(SimpleHTTPRequestHandler):
@@ -308,9 +371,26 @@ def cmd_analyze(args):
     stab = Path(args.stability) if args.stability else None
     path = build_report(runs_csv, out, ahp_path=Path(args.ahp), stability_csv=stab,
                         stability_cfg=Path(args.stability_cfg), sample=Path(args.sample), effort_log=Path(args.effort_log),
-                        gt_dir=Path(args.gt), na_policy_tests=args.na_tests, na_policy_mcda=args.na_mcda, block=args.block)
+                        gt_dir=Path(args.gt), na_policy_tests=args.na_tests, na_policy_mcda=args.na_mcda, block=args.block,
+                        methods=args.methods.split(",") if args.methods else None)
     print(f"Журнал: {runs_csv}")
     print(f"Звіт:   {path}\nТаблиці: {out / 'tables.xlsx'}\nГрафіки: {out / 'figures'}")
+
+
+def cmd_replace_method(args):
+    """Замінити в журналі прогони одного методу прогонами з іншого журналу (напр., перезапуск М4)."""
+    import pandas as pd
+    base = pd.read_csv(args.base)
+    new = pd.read_csv(args.new)
+    new = new[new["method"] == args.method]
+    if new.empty:
+        sys.exit(f"У {args.new} немає прогонів {args.method}")
+    merged = pd.concat([base[base["method"] != args.method], new], ignore_index=True, sort=False)
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    merged.to_csv(out, index=False, encoding="utf-8")
+    print(f"{args.method}: замінено {int((base['method'] == args.method).sum())} -> {len(new)} прогонів; "
+          f"разом {len(merged)}; збережено {out}")
 
 
 def cmd_decide(args):
@@ -358,7 +438,7 @@ def cmd_stability_run(args):
     from ..harness.stability import load_stability, run_stability, ssr_by_method, survival_table
     stab = load_stability(Path(args.config), Path(args.sample))
     methods = args.methods.split(",")
-    collectors = build_collectors(methods, hybrid_threshold=args.threshold, headless=not args.headed)
+    collectors = build_collectors(methods, hybrid_threshold=args.threshold, headless=not args.headed, m4_rule=getattr(args, "m4_rule", "fields"))
     out = Path(args.out)
     n = sum(len(s_.snapshots) for s_ in stab) * len(methods)
     print(f"Блок стійкості: {len(stab)} сторінок × версії × {len(methods)} методів = {n} прогонів; журнал: {out / 'runs.csv'}")
@@ -391,7 +471,12 @@ def main(argv=None):
         p.add_argument("--methods", default=methods)
         p.add_argument("--repeats", type=int, default=repeats)
         p.add_argument("--seed", type=int, default=42)
-        p.add_argument("--threshold", type=float, default=0.8, help="поріг М4 (частка від expected_count)")
+        p.add_argument("--threshold", type=float, default=0.8,
+                       help="поріг М4: мін. частка карток із заповненими назвою і ціною у відповіді М1")
+        p.add_argument("--m4-rule", choices=["fields", "oracle"], default="fields",
+                       help="критерій М4: fields – за відповіддю М1 (основний); oracle – стара версія за expected_count")
+        p.add_argument("--ua", choices=["browser", "honest"], default="browser",
+                       help="User-Agent: browser – як у звичайного Chrome; honest – дослідницький інструмент, без маскування")
         p.add_argument("--gt", type=Path, default=Path("ground_truth"), help="тека з еталоном")
         p.add_argument("--out", default=out)
         p.add_argument("--min-delay", type=float, default=2.0, help="мін. пауза між зверненнями до домену, с")
@@ -440,17 +525,25 @@ def main(argv=None):
     p.add_argument("--headed", action="store_true")
     p.set_defaults(func=cmd_gt_draft)
 
-    p = sub.add_parser("gt-agreement", help="надійність еталону: збіг з повторною розміткою (≥ 98 %)")
+    p = sub.add_parser("gt-blank", help="порожні шаблони для незалежної повторної розмітки (без чернетки)")
+    p.add_argument("--sample", type=Path, default=Path("config/sites_main.yaml"))
+    p.add_argument("--pages", default="xkom_laptops,boulanger_laptops,moyo_laptops,telemart_laptops,power_laptops,verkkokauppa_laptops")
+    p.add_argument("--gt", default="ground_truth")
+    p.add_argument("--force", action="store_true")
+    p.set_defaults(func=cmd_gt_blank)
+
+    p = sub.add_parser("gt-agreement", help="надійність еталону: збіг з повторною розміткою (≥ 98 %%)")
     p.add_argument("--gt", default="ground_truth")
     p.add_argument("--pages")
     p.set_defaults(func=cmd_gt_agreement)
 
-    p = sub.add_parser("env-info", help="зафіксувати умови проведення (ОС, залізо, версії)")
-    p.add_argument("--out", default="results")
+    p = sub.add_parser("env-info", help="зафіксувати умови проведення (ОС, залізо, версії) + requirements.lock.txt")
+    p.add_argument("--out", default="results/main")
     p.set_defaults(func=cmd_env)
 
     p = sub.add_parser("overhead-test", help="накладні витрати монітора (НФВ-6)")
-    p.add_argument("--sample", type=Path, default=Path("config/sites.yaml"))
+    p.add_argument("--sample", type=Path, default=Path("config/sites_main.yaml"))
+    p.add_argument("--out", default="results/overhead")
     p.add_argument("--pages")
     p.add_argument("--n", type=int, default=20)
     p.add_argument("--seed", type=int, default=42)
@@ -472,7 +565,27 @@ def main(argv=None):
     p.add_argument("--na-mcda", choices=["zero", "exclude"], default="zero",
                    help="незастосовні методи в багатокритеріальному оцінюванні (за замовч. zero)")
     p.add_argument("--block", help="аналізувати лише цей блок (main / pilot)")
+    p.add_argument("--methods", help="лише ці методи, напр. M1,M3,M4 (так отримано таблиці розділу 3: "
+                   "М2 застосовний лише на 3 сторінках і в повних блоках залишив би N = 3)")
     p.set_defaults(func=cmd_analyze)
+
+    p = sub.add_parser("probe", help="швидка перевірка: блокування за обраним UA і рішення нового критерію М4")
+    p.add_argument("--sample", type=Path, default=Path("config/sites_main.yaml"))
+    p.add_argument("--pages")
+    p.add_argument("--ua", choices=["browser", "honest"], default="honest")
+    p.add_argument("--threshold", type=float, default=0.8)
+    p.add_argument("--with-m3", action="store_true", help="також один прохід М3 (браузер) на кожній сторінці")
+    p.add_argument("--min-delay", type=float, default=2.0)
+    p.add_argument("--timeout", type=int, default=60)
+    p.add_argument("--headed", action="store_true")
+    p.set_defaults(func=cmd_probe)
+
+    p = sub.add_parser("replace-method", help="замінити прогони одного методу в журналі (після перезапуску)")
+    p.add_argument("--base", required=True, help="основний журнал, напр. results/main/runs.csv")
+    p.add_argument("--new", required=True, help="журнал перезапуску, напр. results/main_m4/runs.csv")
+    p.add_argument("--method", default="M4")
+    p.add_argument("--out", required=True, help="куди зберегти об'єднаний журнал")
+    p.set_defaults(func=cmd_replace_method)
 
     p = sub.add_parser("decide", help="лише багатокритеріальне оцінювання")
     p.add_argument("--runs", required=True)

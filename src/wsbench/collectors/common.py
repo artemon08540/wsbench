@@ -23,6 +23,29 @@ DEFAULT_HEADERS = {
     "Upgrade-Insecure-Requests": "1",
 }
 
+# Ідентифікація клієнта (п. 7 зауважень, розділ про етику):
+#   "browser" – заголовок User-Agent звичайного Chrome (так виконано основний експеримент 10.11.2026);
+#   "honest"  – М1/М2 представляються як дослідницький інструмент, М3 – власним UA headless-браузера
+#               (з ознакою HeadlessChrome, без підміни).
+BROWSER_UA = DEFAULT_HEADERS["User-Agent"]
+HONEST_UA = "wsbench/0.4 (academic research; +https://github.com/artemon08540/wsbench)"
+UA_MODE = "browser"
+
+
+def set_ua_mode(mode: str) -> None:
+    """Змінює ідентифікацію для всіх збирачів (DEFAULT_HEADERS змінюється на місці)."""
+    global UA_MODE
+    if mode not in ("browser", "honest"):
+        raise ValueError("ua: browser | honest")
+    UA_MODE = mode
+    DEFAULT_HEADERS["User-Agent"] = HONEST_UA if mode == "honest" else BROWSER_UA
+
+
+def browser_user_agent():
+    """UA для контексту Playwright: None – залишити власний UA браузера (режим honest)."""
+    return None if UA_MODE == "honest" else BROWSER_UA
+
+
 CAPTCHA_MARKERS = (
     "g-recaptcha", "hcaptcha", "cf-challenge", "challenge-platform", "cf-turnstile",
     "captcha-delivery", "px-captcha", "are you a robot", "verify you are human",

@@ -77,3 +77,30 @@ if __name__ == "__main__":
         if name.startswith("test_"):
             fn()
             print("ok", name)
+
+
+def test_m4_switch_uses_only_m1_response():
+    """М4 не повинен знати кількість товарів з еталону: рішення лише за HTML відповіді М1."""
+    from wsbench.collectors.common import extract_from_html
+    from wsbench.collectors.hybrid import HybridCollector, m1_signals
+    from wsbench.domain import PageSpec
+
+    def page(**kw):
+        return PageSpec(page_id="p", site="s", url="u", card_selector=".c", name_selector=".n",
+                        price_selector=".p", expected_count=1000, **kw)
+
+    cards = "".join(f'<div class="c"><a class="n">Item {i}</a><span class="p">{100 + i} грн</span></div>' for i in range(10))
+    no_price = "".join(f'<div class="c"><a class="n">Item {i}</a><span class="p"></span></div>' for i in range(10))
+    h = HybridCollector.__new__(HybridCollector)
+    h.threshold, h.min_records, h.rule = 0.8, 5, "fields"
+
+    p = page()
+    recs = extract_from_html(cards, p)
+    assert h.switch_reason(len(recs), m1_signals(cards, p, recs), p) == ""      # expected_count=1000 ігнорується
+    recs = extract_from_html(no_price, p)
+    assert h.switch_reason(len(recs), m1_signals(no_price, p, recs), p) == "low_fill"
+    p = page(load_more_selector="button.more", load_more_clicks=1)
+    html = cards + '<button class="more">Показати ще</button>'
+    recs = extract_from_html(html, p)
+    assert h.switch_reason(len(recs), m1_signals(html, p, recs), p) == "load_more"
+    assert h.switch_reason(0, m1_signals("", p, []), p) == "few_records"

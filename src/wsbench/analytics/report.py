@@ -19,8 +19,8 @@ from . import stats as S
 from .effort import effort_table
 from .metrics import BY_COL, RUN_METRICS, failure_breakdown, load_runs, method_level
 
-KEY_METRICS = ["recall", "precision", "f1", "field_accuracy", "t_ms", "throughput", "traffic_mb", "ram_peak_mb", "cpu_s"]
-H2_METRICS = ["t_ms", "traffic_mb", "ram_peak_mb", "cpu_s"]
+KEY_METRICS = ["recall", "precision", "f1", "field_accuracy", "t_ms", "throughput", "traffic_mb", "ram_delta_mb", "cpu_s"]
+H2_METRICS = ["t_ms", "traffic_mb", "ram_delta_mb", "cpu_s"]
 
 
 # ---------------------------------------------------------------- Markdown без зовнішніх бібліотек
@@ -51,11 +51,13 @@ def md_table(df: pd.DataFrame, index: bool = True) -> str:
 def build_report(runs_csv: Path, out_dir: Path, ahp_path: Optional[Path] = None, stability_csv: Optional[Path] = None,
                  stability_cfg: Optional[Path] = None, sample: Optional[Path] = None, effort_log: Optional[Path] = None,
                  gt_dir: Optional[Path] = None, na_policy_tests: str = "exclude", na_policy_mcda: str = "zero",
-                 block: Optional[str] = None) -> Path:
+                 block: Optional[str] = None, methods: Optional[list[str]] = None) -> Path:
     out_dir = Path(out_dir)
     fig_dir = out_dir / "figures"
     fig_dir.mkdir(parents=True, exist_ok=True)
     df = load_runs(runs_csv, block=block)
+    if methods:
+        df = df[df["method"].isin(methods)]
     has_gt = df["recall"].notna().any() if "recall" in df else False
     metrics = [m for m in KEY_METRICS if m in df and df[m].notna().any()]
     sheets: dict[str, pd.DataFrame] = {}
@@ -134,6 +136,26 @@ def build_report(runs_csv: Path, out_dir: Path, ahp_path: Optional[Path] = None,
     else:
         md.append("_потрібен еталон_\n")
 
+    # рівень магазинів
+    section("Результати на рівні магазинів (незалежна одиниця – магазин)")
+    sl = S.site_level(df)
+    sheets["Рівень магазинів"] = sl
+    md.append("Сторінки одного магазину мають спільну верстку й селектори, тому вони не є незалежними "
+              "спостереженнями; нижче – медіани по магазину і критерії на N = кількість магазинів.\n\n" + md_table(sl.round(2)))
+    slt = pd.concat([S.site_level_tests(df, m) for m in ("recall", "t_ms", "ram_delta_mb") if m in df], ignore_index=True)
+    sheets["Рівень магазинів – критерії"] = slt
+    md.append("\n" + md_table(slt, index=False))
+
+    # чутливість М4 до порогу
+    m4s = S.m4_threshold_sensitivity(df)
+    if len(m4s):
+        section("Чутливість М4 до порогу заповненості ключових полів")
+        sheets["М4 поріг"] = m4s
+        md.append(md_table(m4s, index=False))
+        if "switch_reason" in df:
+            why = df[df["method"] == "M4"]["switch_reason"].fillna("").replace("", "без перемикання").value_counts()
+            md.append("\nПричини перемикання у фактичному прогоні:\n\n" + md_table(why.rename("прогонів").to_frame()))
+
     # гіпотеза 2
     section("Гіпотеза 2: ціна повноти (М3 відносно М1)")
     rows = []
@@ -206,6 +228,7 @@ def build_report(runs_csv: Path, out_dir: Path, ahp_path: Optional[Path] = None,
     mv = method_level(df, extra=extra, na_policy=na_policy_mcda)
     ahp_res = mcda.load_ahp(ahp_path) if ahp_path and Path(ahp_path).exists() else None
     r = mcda.evaluate_all(mv, ahp_res)
+    sheets["БКО склад показників"] = r["leave_one_out"]
     sheets["БКО значення показників"] = r["criteria"]
     sheets["БКО нормалізовані"] = r["normalized"]
     sheets["БКО домінування"] = r["dominance"]
@@ -228,6 +251,8 @@ def build_report(runs_csv: Path, out_dir: Path, ahp_path: Optional[Path] = None,
     md.append("\n### 3.8.2 Інтегральний показник E (безрозмірний, 0–1)\n\n" + md_table(r["E"]) +
               "\nРанги:\n\n" + md_table(r["ranks"]))
     md.append("\nВаги сценаріїв (К1 / К2 / К3):\n\n" + md_table(pd.DataFrame(r["scenarios"]).T))
+    md.append(f"\nНе входять до згортки: {', '.join(r['excluded'])} (FR = 100 − SR дублює M5; LOC не виміряний, а заданий).\n")
+    md.append("\n### Чутливість до складу показників (прибираємо по одному)\n\n" + md_table(r["leave_one_out"]))
     md.append("\n### 3.8.3 Аналіз чутливості\n\nЗбурення ваг окремих показників ±30 %:\n\n" + md_table(r["sensitivity"]) +
               "\nЗбурення ваг груп К1–К3 ±30 %:\n\n" + md_table(r["sensitivity_groups"]))
     charts.sensitivity_bar(r["sensitivity"], fig_dir / "sensitivity.png")

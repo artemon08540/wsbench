@@ -12,7 +12,7 @@ import pandas as pd
 
 from ..domain import PageSpec
 
-KEY_COLS = ["n_found", "recall", "t_ms", "traffic_mb", "ram_peak_mb", "cpu_s"]
+KEY_COLS = ["n_found", "recall", "t_ms", "traffic_mb", "ram_delta_mb", "cpu_s"]
 
 
 def load_runs(path: Path) -> pd.DataFrame:
@@ -20,6 +20,9 @@ def load_runs(path: Path) -> pd.DataFrame:
     for c in KEY_COLS + ["precision", "f1", "field_accuracy", "throughput"]:
         if c in df:
             df[c] = pd.to_numeric(df[c], errors="coerce")
+    if "ram_peak_mb" in df and "ram_baseline_mb" in df:
+        df["ram_delta_mb"] = (pd.to_numeric(df["ram_peak_mb"], errors="coerce")
+                              - pd.to_numeric(df["ram_baseline_mb"], errors="coerce")).clip(lower=0)
     return df
 
 

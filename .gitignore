@@ -5,6 +5,13 @@ results/*
 !results/pilot3/
 results/pilot3/*
 !results/pilot3/runs.csv
+# основний експеримент – повністю в репозиторії (відтворюваність)
+!results/main/
+!results/main_m4/
+!results/main_v2/
+!results/environment.json
+!results/main/environment.json
+!results/overhead/
 demo/site/
 demo/ground_truth/
 ground_truth/snapshots/

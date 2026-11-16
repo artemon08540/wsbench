@@ -7,12 +7,13 @@ from .hybrid import HybridCollector
 from .internal_api import InternalApiCollector
 
 
-def build_collectors(names: list[str], hybrid_threshold: float = 0.8, headless: bool = True) -> dict[str, ICollector]:
+def build_collectors(names: list[str], hybrid_threshold: float = 0.8, headless: bool = True,
+                     m4_rule: str = "fields") -> dict[str, ICollector]:
     factory = {
         "M1": lambda: HttpHtmlCollector(),
         "M2": lambda: InternalApiCollector(),
         "M3": lambda: HeadlessCollector(headless=headless),
-        "M4": lambda: HybridCollector(threshold=hybrid_threshold, headless=headless),
+        "M4": lambda: HybridCollector(threshold=hybrid_threshold, headless=headless, rule=m4_rule),
     }
     unknown = [n for n in names if n not in factory]
     if unknown:

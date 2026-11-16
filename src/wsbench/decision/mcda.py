@@ -30,9 +30,21 @@ DEFAULT_PROFILES = {
 
 
 # ---------------------------------------------------------------- підготовка
-def criteria_table(method_values: pd.DataFrame) -> pd.DataFrame:
+# Показники, які за замовчуванням НЕ входять до згортки:
+#   fr         – FR = 100 − SR, тобто дублює M5 (інакше надійність врахувалася б двічі);
+#   effort_loc – LOC конфігурації відрізняється між методами на 0–1 рядок, причому «+1» у М4
+#                (поріг перемикання) задано в коді, а не виміряно; після мінімакс-нормалізації
+#                така різниця давала б повний розмах шкали;
+#   antibot_hits – за весь експеримент 1 спрацювання (М4, HTTP 429) на 330 прогонів; різниця між
+#                методами статистично не значуща (точний критерій Фішера), але після нормалізації
+#                вона одна визначала б переможця. Показник наводиться в таблицях, у згортку не входить.
+DEFAULT_EXCLUDE = ("fr", "effort_loc", "antibot_hits")
+
+
+def criteria_table(method_values: pd.DataFrame, exclude=DEFAULT_EXCLUDE) -> pd.DataFrame:
     """Лише відомі показники M1–M14, у порядку ТЗ; рядки – методи."""
-    cols = [m.col for m in METRICS if m.col in method_values.columns and method_values[m.col].notna().any()]
+    cols = [m.col for m in METRICS if m.col in method_values.columns and method_values[m.col].notna().any()
+            and m.col not in (exclude or ())]
     return method_values[cols].copy()
 
 
@@ -170,9 +182,24 @@ def e_vs_k1(norm: pd.DataFrame, base_group_w: dict[str, float], steps: int = 21)
 
 
 # ---------------------------------------------------------------- усе разом
+def leave_one_out(norm: pd.DataFrame, scenarios: dict[str, dict[str, float]]) -> pd.DataFrame:
+    """Чутливість до СКЛАДУ показників: найкращий метод у кожному сценарії ваг, якщо прибрати
+    з розрахунку один показник (вага групи перерозподіляється між рештою її показників)."""
+    rows = []
+    for drop in [None] + list(norm.columns):
+        n = norm if drop is None else norm.drop(columns=[drop])
+        row = {"Прибрано": "— (усі показники)" if drop is None else f"{BY_COL[drop].code} {BY_COL[drop].name}"}
+        for name, gw in scenarios.items():
+            e = weighted_sum(n, metric_weights_from_groups(list(n.columns), gw))
+            top = e.sort_values(ascending=False)
+            row[name] = f"{top.index[0]} ({top.iloc[0]:.3f})"
+        rows.append(row)
+    return pd.DataFrame(rows).set_index("Прибрано")
+
+
 def evaluate_all(method_values: pd.DataFrame, ahp_res: Optional[AhpResult] = None,
-                 profiles: Optional[dict] = None) -> dict:
-    t = criteria_table(method_values)
+                 profiles: Optional[dict] = None, exclude=DEFAULT_EXCLUDE) -> dict:
+    t = criteria_table(method_values, exclude)
     t, const = drop_constant(t)
     dom, front = pareto(t)
     norm = normalize(t)
@@ -189,4 +216,5 @@ def evaluate_all(method_values: pd.DataFrame, ahp_res: Optional[AhpResult] = Non
         "scenarios": scenarios, "E": e_table, "ranks": ranks,
         "sensitivity": sensitivity(norm, base), "sensitivity_groups": sensitivity(norm, base, level="group"),
         "e_vs_k1": e_vs_k1(norm, base), "ahp": ahp_res,
+        "leave_one_out": leave_one_out(norm, scenarios), "excluded": list(exclude or ()),
     }

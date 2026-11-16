@@ -43,6 +43,8 @@ LOG_FIELDS = [
     "t_ms", "throughput", "traffic_mb", "body_mb", "ram_peak_mb", "ram_baseline_mb", "cpu_s",
     # характеристики сторінки / службові
     "n_requests", "n_xhr", "html_size", "fallback", "m1_found", "browser_launch_ms", "monitor_samples",
+    # М4: ознаки, за якими прийнято рішення про перемикання на браузер
+    "m1_fill", "m1_load_more", "switch_reason",
 ]
 
 
@@ -172,6 +174,8 @@ class RunExecutor:
             n_requests=res.n_requests, n_xhr=res.n_xhr, html_size=res.html_size,
             fallback=res.extra.get("fallback", ""), m1_found=res.extra.get("m1_found", ""),
             browser_launch_ms=res.extra.get("browser_launch_ms", ""), monitor_samples=usage.n_samples,
+            m1_fill=res.extra.get("m1_fill", ""), m1_load_more=res.extra.get("m1_load_more", ""),
+            switch_reason=res.extra.get("switch_reason", ""),
         )
 
         truth = load_ground_truth(self.gt_dir, page.page_id) if self.gt_dir else None

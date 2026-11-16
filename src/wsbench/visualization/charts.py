@@ -59,7 +59,7 @@ def _save(fig, path: Path) -> Path:
 
 def boxplot(df: pd.DataFrame, metric: str, path: Path, log: bool = False) -> Path:
     """Діаграма розмаху показника за методами (рівень прогонів) – п. 8.2 ТЗ."""
-    d = df[usable_for_resources(df)] if metric in ("t_ms", "traffic_mb", "ram_peak_mb", "cpu_s", "throughput") \
+    d = df[usable_for_resources(df)] if metric in ("t_ms", "traffic_mb", "ram_delta_mb", "cpu_s", "throughput") \
         else df[df["error_type"] != "not_applicable"]
     methods = [m for m in COLORS if m in d["method"].unique()]
     data = [d.loc[d["method"] == m, metric].dropna().values for m in methods]
@@ -100,7 +100,7 @@ def recall_by_render(df: pd.DataFrame, path: Path) -> Path:
         for b, v in zip(bars, vals):
             if not np.isnan(v):
                 ax.text(b.get_x() + b.get_width() / 2, v + 1.5, f"{v:.0f}", ha="center", fontsize=7.5, color=INK)
-    ax.set_xticks(x, [{"ssr": "SSR", "hybrid": "Гібрид", "spa": "SPA / CSR"}[g] for g in order])
+    ax.set_xticks(x, [{"ssr": "SSR", "hybrid": "Довантаження\nза дією", "spa": "SPA / CSR"}[g] for g in order])
     ax.set_ylim(0, 112)
     ax.set_ylabel("Повнота (медіана по сторінках), %")
     ax.set_title("Повнота (показник M1) за типом рендерингу сторінки")
