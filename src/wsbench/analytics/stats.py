@@ -348,7 +348,7 @@ def site_level(df: pd.DataFrame, metrics=("recall", "field_accuracy", "t_ms", "t
     meta = pl.groupby("site").agg(сторінок=("page_id", "nunique"),
                                   тип=("render_type", lambda s: "/".join(sorted(set(s)))))
     t = pl.groupby(["site", "method"])[metrics].median().unstack("method")
-    t.columns = [f"{BY_COL[m].code} {m} · {meth}" for m, meth in t.columns]
+    t.columns = [f"{m} · {meth}" for m, meth in t.columns]
     return meta.join(t)
 
 

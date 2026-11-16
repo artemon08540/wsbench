@@ -1,0 +1,28 @@
+# Ознаки відповіді М1, за якими новий критерій М4 приймає рішення (виміряно командою probe 16.11.2026,
+# вивід – results/probe_2026-11-16/probe_output.txt; однаковий для --ua browser і --ua honest).
+# Telemart 16.11 відповідав 403 усім методам, тому для нього ознаки взято з журналу 10.11:
+# М1 знаходив рівно першу порцію (48 із 96), а М3 натискав кнопку load_more_selector → кнопка в HTML була.
+# n_m1 – кількість записів М1; fill – частка карток із назвою і ціною; load_more – кнопка «Показати ще» в HTML.
+pages:
+  foxtrot_laptops:      {n_m1: 42, fill: 1.00, load_more: false}
+  foxtrot_phones:       {n_m1: 42, fill: 1.00, load_more: false}
+  xkom_laptops:         {n_m1: 30, fill: 1.00, load_more: false}
+  xkom_phones:          {n_m1: 30, fill: 1.00, load_more: false}
+  xkom_monitors:        {n_m1: 30, fill: 1.00, load_more: false}
+  ldlc_laptops:         {n_m1: 48, fill: 0.00, load_more: false}
+  ldlc_phones:          {n_m1: 48, fill: 0.00, load_more: false}
+  hotline_laptops:      {n_m1: 48, fill: 1.00, load_more: false}
+  hotline_phones:       {n_m1: 48, fill: 1.00, load_more: false}
+  boulanger_laptops:    {n_m1: 40, fill: 1.00, load_more: false}
+  eldorado_tv:          {n_m1: 40, fill: 0.72, load_more: false}   # частина товарів без ціни (немає в наявності)
+  telemart_laptops:     {n_m1: 48, fill: 1.00, load_more: true}    # з журналу 10.11 (16.11 – HTTP 403)
+  telemart_monitors:    {n_m1: 48, fill: 1.00, load_more: true}
+  telemart_videocards:  {n_m1: 48, fill: 1.00, load_more: true}
+  moyo_laptops:         {n_m1: 24, fill: 1.00, load_more: true}
+  moyo_phones:          {n_m1: 24, fill: 1.00, load_more: true}
+  power_laptops:        {n_m1: 0,  fill: 0.00, load_more: false}
+  power_tv:             {n_m1: 0,  fill: 0.00, load_more: false}
+  power_phones:         {n_m1: 0,  fill: 0.00, load_more: false}
+  verkkokauppa_laptops: {n_m1: 0,  fill: 0.00, load_more: false}
+  verkkokauppa_phones:  {n_m1: 0,  fill: 0.00, load_more: false}
+  verkkokauppa_tablets: {n_m1: 0,  fill: 0.00, load_more: false}

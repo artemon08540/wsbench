@@ -397,6 +397,24 @@ def cmd_replace_method(args):
           f"разом {len(merged)}; збережено {out}")
 
 
+def cmd_m4_reconstruct(args):
+    """Журнал з М4 за новим критерієм (відтворення з прогонів М1/М3 основного експерименту) + чутливість до порогу."""
+    import pandas as pd
+    from ..analytics.m4_reconstruct import load_signals, reconstruct, threshold_table
+    df = pd.read_csv(args.runs)
+    sig = load_signals(Path(args.signals))
+    out = Path(args.out)
+    out.parent.mkdir(parents=True, exist_ok=True)
+    new = reconstruct(df, sig, args.threshold)
+    new.to_csv(out, index=False, encoding="utf-8")
+    m4 = new[new["method"] == "M4"]
+    print(f"Збережено {out}: {len(new)} прогонів; М4 відтворено {int(m4['reconstructed'].sum())} з {len(m4)}")
+    print("Причини перемикання:", m4["switch_reason"].replace("", "без браузера").value_counts().to_dict())
+    t = threshold_table(df, sig)
+    t.to_csv(out.parent / "m4_threshold.csv", index=False, encoding="utf-8-sig")
+    print("\nЧутливість до порогу θ:\n" + t.round(2).to_string(index=False))
+
+
 def cmd_decide(args):
     """Лише багатокритеріальне оцінювання (швидко подивитися E при інших вагах)."""
     from ..analytics.metrics import load_runs, method_level
@@ -590,6 +608,13 @@ def main(argv=None):
     p.add_argument("--method", default="M4")
     p.add_argument("--out", required=True, help="куди зберегти об'єднаний журнал")
     p.set_defaults(func=cmd_replace_method)
+
+    p = sub.add_parser("m4-reconstruct", help="М4 з новим критерієм за журналом основного експерименту + пороги")
+    p.add_argument("--runs", default="results/main/runs.csv")
+    p.add_argument("--signals", default="config/m4_signals.yaml")
+    p.add_argument("--threshold", type=float, default=0.8)
+    p.add_argument("--out", default="results/main_v2/runs.csv")
+    p.set_defaults(func=cmd_m4_reconstruct)
 
     p = sub.add_parser("decide", help="лише багатокритеріальне оцінювання")
     p.add_argument("--runs", required=True)
