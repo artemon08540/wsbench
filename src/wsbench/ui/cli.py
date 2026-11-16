@@ -574,7 +574,7 @@ def main(argv=None):
 
     p = sub.add_parser("gt-blank", help="порожні шаблони для незалежної повторної розмітки (без чернетки)")
     p.add_argument("--sample", type=Path, default=Path("config/sites_main.yaml"))
-    p.add_argument("--pages", default="xkom_laptops,boulanger_laptops,moyo_laptops,telemart_laptops,power_laptops,verkkokauppa_laptops")
+    p.add_argument("--pages", default="xkom_laptops,boulanger_laptops,moyo_laptops,moyo_phones,power_laptops,verkkokauppa_laptops")
     p.add_argument("--gt", default="ground_truth")
     p.add_argument("--force", action="store_true")
     p.set_defaults(func=cmd_gt_blank)
