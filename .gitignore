@@ -18,3 +18,5 @@ ground_truth/snapshots/
 ground_truth/*.draft.csv
 *.log
 .DS_Store
+!results/recheck_2026-11-16/
+!results/probe_2026-11-16/
