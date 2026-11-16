@@ -56,14 +56,16 @@ def _select_pages(sample: Path, page_ids: str | None):
 
 def _run(args, block: str) -> Path:
     from ..collectors.common import set_ua_mode
-    set_ua_mode(args.ua)
+    ua = getattr(args, "ua", "browser")
+    m4_rule = getattr(args, "m4_rule", "fields")
+    set_ua_mode(ua)
     pages = _select_pages(args.sample, args.pages)
     methods = args.methods.split(",")
     tasks = plan_runs(pages, methods, args.repeats, args.seed)
-    collectors = build_collectors(methods, hybrid_threshold=args.threshold, headless=not args.headed, m4_rule=args.m4_rule)
+    collectors = build_collectors(methods, hybrid_threshold=args.threshold, headless=not args.headed, m4_rule=m4_rule)
     out = Path(args.out)
     print(f"План: {len(pages)} сторінок × {len(methods)} методів × {args.repeats} повторів = {len(tasks)} прогонів; "
-          f"зерно={args.seed}; UA={args.ua}; критерій М4={args.m4_rule} (поріг {args.threshold}); журнал: {out / 'runs.csv'}")
+          f"зерно={args.seed}; UA={ua}; критерій М4={m4_rule} (поріг {args.threshold}); журнал: {out / 'runs.csv'}")
     ex = RunExecutor(collectors, out, block=block, gt_dir=args.gt, min_delay_s=args.min_delay,
                      timeout_s=args.timeout, on_row=_print_row)
     log = ex.run(tasks)
@@ -203,7 +205,9 @@ def cmd_probe(args):
     from ..collectors.common import extract_from_html, set_ua_mode
     from ..collectors.http_html import fetch_html
     from ..collectors.hybrid import HybridCollector, m1_signals
-    set_ua_mode(args.ua)
+    ua = getattr(args, "ua", "browser")
+    m4_rule = getattr(args, "m4_rule", "fields")
+    set_ua_mode(ua)
     pages = _select_pages(args.sample, args.pages)
     h = HybridCollector(threshold=args.threshold, headless=not args.headed)
     m3 = build_collectors(["M3"], headless=not args.headed)["M3"] if args.with_m3 else None
