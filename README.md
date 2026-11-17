@@ -149,7 +149,7 @@ python -m wsbench pilot --sample config/sites.yaml --methods M1,M3 --repeats 3
 | Пілот | `python -m wsbench pilot --out results/pilot` | М1 vs М3, 3 повтори |
 | Умови проведення | `python -m wsbench env-info` | `results/environment.json` |
 | Чернетка еталону | `python -m wsbench gt-draft --pages <id>` | `ground_truth/<id>.draft.csv` (для ручної перевірки) |
-| **Основний експеримент** | `python -m wsbench run-experiment --repeats 5 --seed 42 --out results/main` | `results/main/runs.csv` + сирі JSON; після збою – та сама команда продовжить |
+| **Основний експеримент** | `python -m wsbench run-experiment --repeats 5 --seed 42 --out results/main` | `results/main/runs.csv` (сирі JSON пишуться в `results/main/raw/`, але через обсяг у репозиторій не входять); після збою – та сама команда продовжить |
 | Перерахунок за еталоном | `python -m wsbench evaluate --runs results/main` | `runs_evaluated.csv` |
 | Блок стійкості, крок 1 | `python -m wsbench stability-find --pages <id1>,<id2>,...` | `config/stability.yaml` з датами архівних копій |
 | Блок стійкості, крок 2 | `python -m wsbench stability-run` | `results/stability/runs.csv`, `survival.csv`, M13 |
@@ -217,15 +217,17 @@ python -m wsbench analyze --runs results/main_v2/runs.csv --sample config/sites_
   Фрідмана (виключення чи recall = 0) фіксується в `journal/journal.md` до аналізу.
 - **Критерій перемикання М4** використовує лише відповідь М1, а не кількість товарів з еталону: браузер
   запускається, якщо М1 знайшов < 5 записів, або частка карток із заповненими назвою і ціною < θ (θ = 0,8),
-  або у вихідному HTML є кнопка «Показати ще». Чутливість до θ = 0,6/0,7/0,8/0,9 рахує `analyze` за журналом
+  або у вихідному HTML є кнопка «Показати ще» (за селектором `load_more_selector`, заданим у конфігурації сторінки;
+  без нього М4 на сторінках з довантаженням дав би 50 %). Чутливість до θ = 0,6/0,7/0,8/0,9 рахує `analyze` за журналом
   (поля `m1_fill`, `m1_load_more`, `switch_reason`). Стара версія критерію – `--m4-rule oracle` (лише для відтворення).
 - **User-Agent** – прапорець `--ua`: `honest` (за замовчуванням) – дослідницький інструмент
   (`wsbench/… (academic research; +посилання)`), М3 – з власним UA headless-браузера без підміни; `browser` – заголовок
   звичайного Chrome. Основний експеримент 10.11.2026 виконано з `browser`; контрольна перевірка 16.11.2026
-  (`probe`, results/probe_2026-11-16) показала однаковий доступ до всіх 22 сторінок за обох режимів.
+  (`probe`, results/probe_2026-11-16) показала, що за обох режимів доступні ті самі 19 сторінок, а Telemart (3 сторінки) блокує обидва.
 - **Вибір методу**: FR не входить до згортки (FR = 100 − SR дублює П5); LOC і П12 наводяться в таблицях,
   але не входять до згортки (див. розділ 3.8 записки); `analyze` також рахує результат при вилученні
-  кожного показника по одному.
+  кожного показника по одному. SR у згортці належить до групи К3 (надійність), тому жодна група не порожня;
+  М3 і М4 за інтегральною оцінкою рівноцінні (різниця < 0,01 у чотирьох сценаріях із п'яти).
 
 ## Структура
 

@@ -19,7 +19,20 @@ import pandas as pd
 from ..analytics.metrics import BY_COL, METRICS
 
 GROUPS = ["K1", "K2", "K3"]
-GROUP_NAMES = {"K1": "результативність (M1–M5)", "K2": "ресурсомісткість (M6–M10)", "K3": "експлуатаційні (M11–M14)"}
+GROUP_NAMES = {"K1": "результативність (M1–M4)", "K2": "ресурсомісткість (M6–M10)", "K3": "надійність і експлуатація (M5, M11–M14)"}
+# У згортці SR (M5) належить до К3: до вилучення FR = 100 − SR надійність була представлена в К3 саме FR,
+# тож без перенесення К3 лишалася б порожньою, а її вага непомітно ділилася б між К1 і К2.
+MCDA_GROUP = {"sr": "K3"}
+
+
+def group_of(col: str) -> str:
+    return MCDA_GROUP.get(col, BY_COL[col].group)
+
+
+def effective_group_weights(cols: list[str], group_w: dict[str, float]) -> dict[str, float]:
+    """Фактичні ваги груп після перерозподілу ваги порожніх груп."""
+    w = metric_weights_from_groups(cols, group_w)
+    return {g: float(sum(w[c] for c in cols if group_of(c) == g)) for g in GROUPS}
 RANDOM_INDEX = {1: 0.0, 2: 0.0, 3: 0.58, 4: 0.90, 5: 1.12, 6: 1.24, 7: 1.32, 8: 1.41, 9: 1.45, 10: 1.49}
 
 DEFAULT_PROFILES = {
@@ -99,7 +112,7 @@ def normalize(t: pd.DataFrame) -> pd.DataFrame:
 def metric_weights_from_groups(cols: list[str], group_w: dict[str, float]) -> pd.Series:
     """Вага групи ділиться порівну між її показниками, присутніми в даних (п. 9.5, крок 5).
     Якщо в групі немає жодного показника – її вага перерозподіляється між іншими групами."""
-    present = {g: [c for c in cols if BY_COL[c].group == g] for g in GROUPS}
+    present = {g: [c for c in cols if group_of(c) == g] for g in GROUPS}
     gw = {g: group_w.get(g, 0.0) for g in GROUPS if present[g]}
     s = sum(gw.values())
     w = {}
@@ -217,4 +230,5 @@ def evaluate_all(method_values: pd.DataFrame, ahp_res: Optional[AhpResult] = Non
         "sensitivity": sensitivity(norm, base), "sensitivity_groups": sensitivity(norm, base, level="group"),
         "e_vs_k1": e_vs_k1(norm, base), "ahp": ahp_res,
         "leave_one_out": leave_one_out(norm, scenarios), "excluded": list(exclude or ()),
+        "effective_weights": pd.DataFrame({name: effective_group_weights(cols, gw) for name, gw in scenarios.items()}).T,
     }
